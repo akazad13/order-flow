@@ -22,3 +22,8 @@ Feature: Confirm an order (Order service)
     When payment succeeds before stock is reserved for that order, with a total of 37.00
     Then the order has status "Confirmed" and a total of 37.00
     And OrderConfirmed is published for that order with a total of 37.00
+
+  Scenario: Payment news that arrives before the order is being tracked still confirms it
+    Given an order for 2 x "SKU-002" is stored but not yet tracked
+    When payment succeeds, then stock is reserved, then the order placement is processed, with a total of 90.00
+    Then the order has status "Confirmed" and a total of 90.00

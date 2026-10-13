@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect } from '@playwright/test';
-import { Given, Then, When, inventoryUrl } from './fixtures';
+import { Given, Then, When, inventoryUrl, paymentUrl } from './fixtures';
 
 // The flow is asynchronous (broker in the middle): rely on Playwright's
 // auto-retrying expect with a timeout, never on fixed sleeps.
@@ -17,6 +17,13 @@ Given('an item priced {float} with {int} in stock', async ({ request, scenario }
 Given('a new customer is on the order page', async ({ page, scenario }) => {
   await page.goto('/');
   await page.getByLabel('Customer ID').fill(scenario.customerId);
+});
+
+Given('their payments will be declined', async ({ request, scenario }) => {
+  const response = await request.put(`${paymentUrl}/test/declines/${scenario.customerId}`, {
+    data: { reason: 'Card declined' },
+  });
+  expect(response.ok()).toBeTruthy();
 });
 
 When('they order {int} of {string}', async ({ page }, quantity: number, sku: string) => {
@@ -41,6 +48,18 @@ Then('they see their order with status {string} within {int} seconds', async ({ 
 
 Then('they see a total of {float}', async ({ page }, total: number) => {
   await expect(page.getByRole('region', { name: 'Order' })).toContainText(`Total: ${total.toFixed(2)}`);
+});
+
+Then('they see the reason {string}', async ({ page }, reason: string) => {
+  await expect(page.getByRole('region', { name: 'Order' })).toContainText(`Reason: ${reason}`);
+});
+
+Then('the item has {int} in stock again', async ({ request, scenario }, available: number) => {
+  await expect
+    .poll(async () => (await (await request.get(`${inventoryUrl}/stock/${scenario.sku}`)).json()).available, {
+      timeout: EVENTUAL_TIMEOUT_MS,
+    })
+    .toBe(available);
 });
 
 Then('their inbox shows {string}', async ({ page }, text: string) => {

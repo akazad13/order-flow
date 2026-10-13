@@ -18,6 +18,7 @@
     <!-- Feature files live with the specs at the repo root, not in the test project. -->
     <ReqnrollFeatureFiles Include="..\..\features\component\order-received-notification.feature" Link="Features\order-received-notification.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\order-confirmed-notification.feature" Link="Features\order-confirmed-notification.feature" />
+    <ReqnrollFeatureFiles Include="..\..\features\component\order-cancelled-notification.feature" Link="Features\order-cancelled-notification.feature" />
   </ItemGroup>
 
   <ItemGroup>

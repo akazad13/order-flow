@@ -72,5 +72,76 @@ public sealed class HoldStockSteps(InventoryServiceFactory service)
         }
     }
 
+    [Then("StockRejected is published for that order with shortages:")]
+    public async Task ThenStockRejectedIsPublished(DataTable table)
+    {
+        (await service.Harness.Published.Any<StockRejected>(m => m.Context.Message.OrderId == _orderId)).ShouldBeTrue();
+        var rejected = service.Harness.Published.Select<StockRejected>(m => m.Context.Message.OrderId == _orderId).Single().Context.Message;
+
+        var expected = table.Rows.Select(r => new StockShortage(r["sku"], Int(r["requested"]), Int(r["available"]))).ToList();
+        rejected.Shortages.ShouldBe(expected, ignoreOrder: true);
+    }
+
+    [Then("no StockReserved is published")]
+    public async Task ThenNoStockReservedIsPublished()
+    {
+        (await service.Harness.Published.Any<StockReserved>()).ShouldBeFalse();
+    }
+
+    [Given("an order holds {int} of {string}")]
+    public async Task GivenAnOrderHolds(int quantity, string sku)
+    {
+        await service.Harness.Bus.Publish(new OrderPlaced(_orderId, "customer-1", [new OrderPlacedLine(sku, quantity)], DateTimeOffset.UtcNow));
+        (await service.Harness.Published.Any<StockReserved>(m => m.Context.Message.OrderId == _orderId)).ShouldBeTrue();
+    }
+
+    [When("the order is cancelled")]
+    public async Task WhenTheOrderIsCancelled() => await Cancel(_orderId, times: 1);
+
+    [When("the order is cancelled twice")]
+    public async Task WhenTheOrderIsCancelledTwice() => await Cancel(_orderId, times: 2);
+
+    [When("an order that held nothing is cancelled")]
+    public async Task WhenAnOrderThatHeldNothingIsCancelled()
+    {
+        _ = service.CreateClient();
+        await Cancel(_orderId, times: 1);
+    }
+
+    [Then("StockReleased is published for that order with {int} of {string}")]
+    public async Task ThenStockReleasedIsPublished(int quantity, string sku)
+    {
+        (await service.Harness.Published.Any<StockReleased>(m => m.Context.Message.OrderId == _orderId)).ShouldBeTrue();
+        var released = service.Harness.Published.Select<StockReleased>(m => m.Context.Message.OrderId == _orderId).Single().Context.Message;
+
+        released.Lines.ShouldBe([new StockReleasedLine(sku, quantity)]);
+    }
+
+    [Then("StockReleased is published once for that order")]
+    public void ThenStockReleasedIsPublishedOnce()
+    {
+        service.Harness.Published.Select<StockReleased>(m => m.Context.Message.OrderId == _orderId).Count().ShouldBe(1);
+    }
+
+    [Then("no StockReleased is published")]
+    public async Task ThenNoStockReleasedIsPublished()
+    {
+        (await service.Harness.Published.Any<StockReleased>()).ShouldBeFalse();
+    }
+
+    private async Task Cancel(Guid orderId, int times)
+    {
+        for (var i = 0; i < times; i++)
+        {
+            await service.Harness.Bus.Publish(new OrderCancelled(orderId, "customer-1", CancellationReasons.PaymentDeclined, "Card declined", DateTimeOffset.UtcNow));
+        }
+
+        var consumer = service.Harness.GetConsumerHarness<OrderCancelledConsumer>();
+        var consumed = await consumer.Consumed.SelectAsync<OrderCancelled>(m => m.Context.Message.OrderId == orderId).Take(times).CountAsync();
+        consumed.ShouldBe(times);
+    }
+
+    private static int Int(string value) => int.Parse(value, CultureInfo.InvariantCulture);
+
     private static decimal Money(string value) => decimal.Parse(value, CultureInfo.InvariantCulture);
 }

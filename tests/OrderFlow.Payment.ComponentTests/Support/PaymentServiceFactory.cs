@@ -14,6 +14,7 @@ public sealed class PaymentServiceFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
     {
+        builder.UseSetting(TestEndpoints.EnableKey, "true");
         builder.ConfigureTestServices(services => services.AddMassTransitTestHarness());
     }
 

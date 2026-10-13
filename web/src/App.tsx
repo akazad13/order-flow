@@ -4,6 +4,12 @@ import { getInbox, getOrder, placeOrder, type InboxMessage, type Order } from '.
 // Spec 001 Q3: poll until SignalR arrives in spec 005.
 export const POLL_MS = 1000;
 
+// Same plain words as the customer's inbox (specs 002, 003).
+const CANCELLATION_TEXT: Record<NonNullable<Order['cancellation']>['reason'], string> = {
+  OutOfStock: 'some items are out of stock',
+  PaymentDeclined: 'your payment was declined',
+};
+
 export function App() {
   const [customerId, setCustomerId] = useState('customer-1');
   const [sku, setSku] = useState('SKU-001');
@@ -95,6 +101,12 @@ export function App() {
             Status: <strong>{order.status}</strong>
           </p>
           {order.total != null && <p>Total: {order.total.toFixed(2)}</p>}
+          {order.cancellation && (
+            <>
+              <p>Reason: {CANCELLATION_TEXT[order.cancellation.reason]}</p>
+              <p>{order.cancellation.detail}</p>
+            </>
+          )}
         </section>
       )}
 

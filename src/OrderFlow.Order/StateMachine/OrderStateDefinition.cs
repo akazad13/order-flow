@@ -9,8 +9,9 @@ namespace OrderFlow.OrderService.StateMachine;
 /// Found by the E2E stability run (about 1 failure in 40, then 7 in 100 with a
 /// partitioner, which keeps arrival order and so cannot help).
 ///
-/// An event that arrives before the state machine can handle it is retried with a short
-/// back-off; meanwhile the earlier event is processed. Modelling each ordering explicitly
+/// An event that arrives before the state machine can handle it (wrong state, or no
+/// instance yet: week 4 stress run) is retried with a short back-off; meanwhile the earlier
+/// event is processed. Modelling each ordering explicitly
 /// (and idempotency) is spec 004.
 /// </summary>
 public sealed class OrderStateDefinition : SagaDefinition<OrderState>
@@ -23,6 +24,7 @@ public sealed class OrderStateDefinition : SagaDefinition<OrderState>
         endpointConfigurator.UseMessageRetry(retry =>
         {
             retry.Handle<UnhandledEventException>();
+            retry.Handle<SagaException>();
             retry.Intervals(50, 100, 250, 500, 1000, 2000);
         });
     }

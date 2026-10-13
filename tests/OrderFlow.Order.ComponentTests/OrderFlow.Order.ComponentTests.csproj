@@ -19,6 +19,7 @@
     <!-- Feature files live with the specs at the repo root, not in the test project. -->
     <ReqnrollFeatureFiles Include="..\..\features\component\place-order.feature" Link="Features\place-order.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\confirm-order.feature" Link="Features\confirm-order.feature" />
+    <ReqnrollFeatureFiles Include="..\..\features\component\cancel-order.feature" Link="Features\cancel-order.feature" />
   </ItemGroup>
 
   <ItemGroup>

@@ -4,9 +4,13 @@ public enum OrderStatus
 {
     Pending,
     Confirmed,
+    Cancelled,
 }
 
 public sealed record OrderLine(string Sku, int Quantity);
+
+/// <summary>Reason is one of <c>OrderFlow.Contracts.Events.CancellationReasons</c>.</summary>
+public sealed record Cancellation(string Reason, string Detail);
 
 public sealed class Order
 {
@@ -27,6 +31,9 @@ public sealed class Order
 
     /// <summary>Null until stock is held and Inventory has priced the order (spec 001, AC-6).</summary>
     public decimal? Total { get; private set; }
+
+    /// <summary>Null unless the order is Cancelled (specs 002, 003).</summary>
+    public Cancellation? Cancellation { get; private set; }
 
     /// <summary>
     /// Spec 000, AC-1 and AC-2: a valid order starts Pending; an invalid one is
@@ -90,12 +97,37 @@ public sealed class Order
     /// </summary>
     public void Confirm()
     {
+        if (Status == OrderStatus.Cancelled)
+        {
+            throw new InvalidOperationException($"Order {Id} is cancelled and can never be confirmed.");
+        }
+
         if (Total is null)
         {
             throw new InvalidOperationException($"Order {Id} cannot be confirmed before its stock is held.");
         }
 
         Status = OrderStatus.Confirmed;
+    }
+
+    /// <summary>
+    /// Cancelled is final (spec 002, R-3); cancelling again is harmless. A confirmed order is
+    /// never cancelled by the stock or payment flows (spec 003, R-3).
+    /// </summary>
+    public void Cancel(string reason, string detail)
+    {
+        if (Status == OrderStatus.Cancelled)
+        {
+            return;
+        }
+
+        if (Status == OrderStatus.Confirmed)
+        {
+            throw new InvalidOperationException($"Order {Id} is confirmed and cannot be cancelled.");
+        }
+
+        Status = OrderStatus.Cancelled;
+        Cancellation = new Cancellation(reason, detail);
     }
 }
 

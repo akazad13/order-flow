@@ -4,15 +4,12 @@ using OrderFlow.Inventory.Domain;
 
 namespace OrderFlow.Inventory.Consumers;
 
-public sealed class OrderPlacedConsumer(
-    Catalog catalog,
-    TimeProvider clock,
-    ILogger<OrderPlacedConsumer> logger) : IConsumer<OrderPlaced>
+public sealed class OrderPlacedConsumer(Catalog catalog, TimeProvider clock) : IConsumer<OrderPlaced>
 {
     public async Task Consume(ConsumeContext<OrderPlaced> context)
     {
         var order = context.Message;
-        var result = catalog.TryReserve(order.Lines.Select(l => new RequestedLine(l.Sku, l.Quantity)).ToList());
+        var result = catalog.TryReserve(order.OrderId, order.Lines.Select(l => new RequestedLine(l.Sku, l.Quantity)).ToList());
 
         switch (result)
         {
@@ -26,8 +23,11 @@ public sealed class OrderPlacedConsumer(
                 break;
 
             case ReservationResult.Rejected rejected:
-                // Spec 002 replaces this with a StockRejected event; until then the order stays Pending.
-                logger.LogWarning("Stock not held for order {OrderId}: {Reason}", order.OrderId, rejected.Reason);
+                await context.Publish(new StockRejected(
+                    order.OrderId,
+                    order.CustomerId,
+                    rejected.Shortages.Select(s => new StockShortage(s.Sku, s.Requested, s.Available)).ToList(),
+                    clock.GetUtcNow()));
                 break;
         }
     }

@@ -59,10 +59,10 @@ export interface components {
             lines: components["schemas"]["OrderLine"][];
         };
         /**
-         * @description Only moves forward. Grows with later specs (Cancelled).
+         * @description Only moves forward. Confirmed and Cancelled are final.
          * @enum {string}
          */
-        OrderStatus: "Pending" | "Confirmed";
+        OrderStatus: "Pending" | "Confirmed" | "Cancelled";
         Order: {
             /** Format: uuid */
             orderId: string;
@@ -74,8 +74,19 @@ export interface components {
              * @example 37
              */
             total: number | null;
+            /** @description Why the order was cancelled. Null unless status is Cancelled. */
+            cancellation: components["schemas"]["Cancellation"] | null;
             /** Format: date-time */
             placedAt: string;
+        };
+        Cancellation: {
+            /** @enum {string} */
+            reason: "OutOfStock" | "PaymentDeclined";
+            /**
+             * @example Only 1 of SKU-002 available
+             * @example 2 requested.
+             */
+            detail: string;
         };
         ValidationProblem: {
             type?: string;

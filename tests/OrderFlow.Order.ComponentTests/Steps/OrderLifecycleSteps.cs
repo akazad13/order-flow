@@ -1,9 +1,12 @@
 using System.Globalization;
 using System.Net.Http.Json;
 using MassTransit.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using OrderFlow.Contracts.Events;
 using OrderFlow.OrderService.Api;
 using OrderFlow.OrderService.ComponentTests.Support;
+using OrderFlow.OrderService.Domain;
+using OrderFlow.OrderService.Persistence;
 using OrderFlow.OrderService.StateMachine;
 using Reqnroll;
 using Shouldly;
@@ -11,7 +14,7 @@ using Shouldly;
 namespace OrderFlow.OrderService.ComponentTests.Steps;
 
 [Binding]
-public sealed class ConfirmOrderSteps(OrderServiceFactory service)
+public sealed class OrderLifecycleSteps(OrderServiceFactory service)
 {
     private OrderResponse? _placed;
     private decimal _reservedTotal;
@@ -87,6 +90,72 @@ public sealed class ConfirmOrderSteps(OrderServiceFactory service)
     public async Task ThenNoOrderConfirmedIsPublished()
     {
         (await service.Harness.Published.Any<OrderConfirmed>()).ShouldBeFalse();
+    }
+
+    [Given("an order for {int} x {string} is stored but not yet tracked")]
+    public async Task GivenAnOrderIsStoredButNotYetTracked(int quantity, string sku)
+    {
+        // Saved by the API, but its OrderPlaced has not been processed by the state machine yet.
+        var order = Order.Place("customer-1", [new OrderLine(sku, quantity)], TimeProvider.System).Order!;
+        await service.Services.GetRequiredService<IOrderRepository>().AddAsync(order, CancellationToken.None);
+        _placed = OrderResponse.From(order);
+    }
+
+    [When(@"^payment succeeds, then stock is reserved, then the order placement is processed, with a total of (\d+\.\d{2})$")]
+    public async Task WhenEverythingArrivesBeforeOrderPlaced(string total)
+    {
+        var order = _placed!;
+        await service.Harness.Bus.Publish(new PaymentSucceeded(order.OrderId, Guid.NewGuid(), Money(total), DateTimeOffset.UtcNow));
+        await service.Harness.Bus.Publish(new StockReserved(order.OrderId, order.CustomerId, [], Money(total), DateTimeOffset.UtcNow));
+        await service.Harness.Bus.Publish(new OrderPlaced(order.OrderId, order.CustomerId, order.Lines.Select(l => new OrderPlacedLine(l.Sku, l.Quantity)).ToList(), order.PlacedAt));
+
+        await Saga.Exists(order.OrderId, machine => machine.Confirmed);
+    }
+
+    [When("stock is rejected for that order because {string} has {int} available")]
+    public async Task WhenStockIsRejected(string sku, int available)
+    {
+        var requested = _placed!.Lines.Single(l => l.Sku == sku).Quantity;
+        await service.Harness.Bus.Publish(new StockRejected(_placed.OrderId, _placed.CustomerId, [new StockShortage(sku, requested, available)], DateTimeOffset.UtcNow));
+
+        await Saga.Exists(_placed.OrderId, machine => machine.Cancelled);
+    }
+
+    [When("payment fails for that order with reason {string}")]
+    public async Task WhenPaymentFails(string reason)
+    {
+        await service.Harness.Bus.Publish(new PaymentFailed(_placed!.OrderId, reason, DateTimeOffset.UtcNow));
+
+        await Saga.Exists(_placed.OrderId, machine => machine.Cancelled);
+    }
+
+    [When("payment fails before stock is reserved for that order")]
+    public async Task WhenPaymentFailureOvertakesTheStockHold()
+    {
+        // RabbitMQ only orders messages per publisher; Payment and Inventory are different publishers.
+        await service.Harness.Bus.Publish(new PaymentFailed(_placed!.OrderId, "Card declined", DateTimeOffset.UtcNow));
+        await service.Harness.Bus.Publish(new StockReserved(_placed.OrderId, _placed.CustomerId, [], 37.00m, DateTimeOffset.UtcNow));
+
+        await Saga.Exists(_placed.OrderId, machine => machine.Cancelled);
+    }
+
+    [Then("the order is cancelled with reason {string} and detail {string}")]
+    public async Task ThenTheOrderIsCancelled(string reason, string detail)
+    {
+        var order = await service.CreateClient().GetFromJsonAsync<OrderResponse>($"/orders/{_placed!.OrderId}");
+
+        order!.Status.ShouldBe("Cancelled");
+        order.Cancellation.ShouldBe(new CancellationDto(reason, detail));
+    }
+
+    [Then("OrderCancelled is published for that order with reason {string}")]
+    public async Task ThenOrderCancelledIsPublished(string reason)
+    {
+        (await service.Harness.Published.Any<OrderCancelled>(m => m.Context.Message.OrderId == _placed!.OrderId)).ShouldBeTrue();
+        var cancelled = service.Harness.Published.Select<OrderCancelled>(m => m.Context.Message.OrderId == _placed!.OrderId).Single().Context.Message;
+
+        cancelled.Reason.ShouldBe(reason);
+        cancelled.CustomerId.ShouldBe(_placed!.CustomerId);
     }
 
     private static decimal Money(string value) => decimal.Parse(value, CultureInfo.InvariantCulture);

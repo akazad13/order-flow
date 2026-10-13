@@ -39,6 +39,7 @@ This spec covers the **happy path only**: everything is in stock and payment suc
 - An order with two lines for the same SKU: treated as one line with the summed quantity.
 - The customer reloads the page while the order is Pending: they still see the order and its current status.
 - The customer's messages arrive out of order (confirmation before receipt): the inbox still lists them in the order things happened. *(Added during build: found by the E2E stability run.)*
+- The news that payment succeeded arrives before the shop has even started tracking the order: the order is still confirmed. *(Added in week 4: stress run, 2 in 100.)*
 - The news that payment succeeded arrives before the news that stock is held (possible because different services send them): the order is still confirmed. *(Added during build: the E2E stability run found 1 failure in 40.)*
 
 ## Non-goals

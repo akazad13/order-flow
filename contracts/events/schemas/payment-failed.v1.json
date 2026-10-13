@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orderflow.example.com/events/payment-failed.v1.json",
+  "title": "PaymentFailed v1",
+  "description": "The `message` body of the MassTransit envelope published on the payment-failed exchange. No charge was made.",
+  "type": "object",
+  "required": ["orderId", "reason", "failedAt"],
+  "additionalProperties": false,
+  "properties": {
+    "orderId": { "type": "string", "format": "uuid" },
+    "reason": { "type": "string", "minLength": 1, "description": "The provider's decline reason, e.g. \"Card declined\"." },
+    "failedAt": { "type": "string", "format": "date-time" }
+  }
+}

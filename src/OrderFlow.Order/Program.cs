@@ -11,6 +11,8 @@ builder.AddOrderFlowServiceDefaults("order", bus =>
 builder.Services.AddSingleton<IOrderRepository, InMemoryOrderRepository>();
 builder.Services.AddScoped<RecordStockHeldActivity>();
 builder.Services.AddScoped<ConfirmOrderActivity>();
+builder.Services.AddScoped<CancelForShortageActivity>();
+builder.Services.AddScoped<CancelForPaymentActivity>();
 
 var app = builder.Build();
 

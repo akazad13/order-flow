@@ -42,6 +42,9 @@ services:
     build:
       <<: *service-build
       args: { PROJECT: OrderFlow.Payment }
+    environment:
+      RabbitMq__Host: rabbitmq
+      Payment__EnableTestEndpoints: "true" # PUT /test/declines/{customerId} (spec 003, Q1)
     ports: ["5103:8080"]
 
   notification:

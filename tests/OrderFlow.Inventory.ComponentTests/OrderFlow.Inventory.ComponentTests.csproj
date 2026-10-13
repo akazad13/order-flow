@@ -17,6 +17,8 @@
   <ItemGroup>
     <!-- Feature files live with the specs at the repo root, not in the test project. -->
     <ReqnrollFeatureFiles Include="..\..\features\component\hold-stock.feature" Link="Features\hold-stock.feature" />
+    <ReqnrollFeatureFiles Include="..\..\features\component\reject-stock.feature" Link="Features\reject-stock.feature" />
+    <ReqnrollFeatureFiles Include="..\..\features\component\release-stock.feature" Link="Features\release-stock.feature" />
   </ItemGroup>
 
   <ItemGroup>

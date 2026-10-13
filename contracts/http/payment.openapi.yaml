@@ -1,0 +1,48 @@
+openapi: 3.1.0
+info:
+  title: OrderFlow Payment API (test controls)
+  version: 0.1.0
+  description: Payment has no customer-facing API. This contract only covers the test switch that makes the fake gateway decline a customer's payments (spec 003).
+  contact:
+    name: OrderFlow
+    url: https://example.com/orderflow
+servers:
+  - url: http://localhost:5103
+    description: Local (dotnet run)
+tags:
+  - name: test
+    description: Test-only controls. Exposed only when `Payment:EnableTestEndpoints` is true; otherwise 404.
+paths:
+  /test/declines/{customerId}:
+    parameters:
+      - name: customerId
+        in: path
+        required: true
+        schema:
+          type: string
+    put:
+      operationId: setDecline
+      tags: [test]
+      summary: Decline this customer's payments (test only)
+      description: Every later payment for the customer is declined with the given reason, until the service restarts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeclineRule'
+      responses:
+        '204':
+          description: Rule stored.
+        '400':
+          description: Missing reason.
+components:
+  schemas:
+    DeclineRule:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          examples: [Card declined]

@@ -17,3 +17,4 @@ export const test = base.extend<{ scenario: Scenario }>({
 export const { Given, When, Then } = createBdd(test);
 
 export const inventoryUrl = process.env.INVENTORY_URL ?? 'http://localhost:5102';
+export const paymentUrl = process.env.PAYMENT_URL ?? 'http://localhost:5103';

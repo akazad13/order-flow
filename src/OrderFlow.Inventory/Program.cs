@@ -5,7 +5,11 @@ using OrderFlow.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddOrderFlowServiceDefaults("inventory", bus => bus.AddConsumer<OrderPlacedConsumer>());
+builder.AddOrderFlowServiceDefaults("inventory", bus =>
+{
+    bus.AddConsumer<OrderPlacedConsumer>();
+    bus.AddConsumer<OrderCancelledConsumer>();
+});
 builder.Services.AddSingleton(new Catalog(CatalogSeed.Items));
 
 var app = builder.Build();

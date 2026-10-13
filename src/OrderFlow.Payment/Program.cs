@@ -12,4 +12,26 @@ var app = builder.Build();
 
 app.MapOrderFlowDefaults();
 
+// Test-only (contracts/http/payment.openapi.yaml): make a customer's payments fail (spec 003, Q1).
+if (app.Configuration.GetValue<bool>(TestEndpoints.EnableKey))
+{
+    app.MapPut("/test/declines/{customerId}", (string customerId, DeclineRule rule, FakePaymentGateway gateway) =>
+    {
+        if (string.IsNullOrWhiteSpace(rule.Reason))
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["reason"] = ["Reason is required."] });
+        }
+
+        gateway.DeclineFor(customerId, rule.Reason);
+        return Results.NoContent();
+    }).WithName("setDecline");
+}
+
 app.Run();
+
+public sealed record DeclineRule(string? Reason);
+
+public static class TestEndpoints
+{
+    public const string EnableKey = "Payment:EnableTestEndpoints";
+}

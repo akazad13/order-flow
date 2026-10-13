@@ -1,7 +1,7 @@
 asyncapi: 3.1.0
 info:
   title: OrderFlow events
-  version: 0.2.0
+  version: 0.3.0
   description: |
     Events exchanged between OrderFlow services over RabbitMQ (MassTransit v8).
     MassTransit wraps each payload in an envelope; the schemas below describe the
@@ -46,6 +46,38 @@ channels:
     messages:
       OrderConfirmed:
         $ref: '#/components/messages/OrderConfirmed'
+    bindings:
+      $ref: '#/components/channelBindings/fanout'
+  stockRejected:
+    address: stock-rejected
+    description: Nothing was held for the order; every short line is listed.
+    messages:
+      StockRejected:
+        $ref: '#/components/messages/StockRejected'
+    bindings:
+      $ref: '#/components/channelBindings/fanout'
+  paymentFailed:
+    address: payment-failed
+    description: The payment was declined; no charge was made.
+    messages:
+      PaymentFailed:
+        $ref: '#/components/messages/PaymentFailed'
+    bindings:
+      $ref: '#/components/channelBindings/fanout'
+  orderCancelled:
+    address: order-cancelled
+    description: The order is Cancelled (final), with a reason.
+    messages:
+      OrderCancelled:
+        $ref: '#/components/messages/OrderCancelled'
+    bindings:
+      $ref: '#/components/channelBindings/fanout'
+  stockReleased:
+    address: stock-released
+    description: Stock held for a cancelled order is available again.
+    messages:
+      StockReleased:
+        $ref: '#/components/messages/StockReleased'
     bindings:
       $ref: '#/components/channelBindings/fanout'
 operations:
@@ -126,6 +158,62 @@ operations:
       $ref: '#/channels/orderConfirmed'
     messages:
       - $ref: '#/channels/orderConfirmed/messages/OrderConfirmed'
+  publishStockRejected:
+    action: send
+    summary: Inventory announces a shortage (spec 002).
+    channel:
+      $ref: '#/channels/stockRejected'
+    messages:
+      - $ref: '#/channels/stockRejected/messages/StockRejected'
+  orderReceivesStockRejected:
+    action: receive
+    summary: The Order state machine cancels the order (OutOfStock).
+    channel:
+      $ref: '#/channels/stockRejected'
+    messages:
+      - $ref: '#/channels/stockRejected/messages/StockRejected'
+  publishPaymentFailed:
+    action: send
+    summary: Payment announces a declined payment (spec 003).
+    channel:
+      $ref: '#/channels/paymentFailed'
+    messages:
+      - $ref: '#/channels/paymentFailed/messages/PaymentFailed'
+  orderReceivesPaymentFailed:
+    action: receive
+    summary: The Order state machine cancels the order (PaymentDeclined).
+    channel:
+      $ref: '#/channels/paymentFailed'
+    messages:
+      - $ref: '#/channels/paymentFailed/messages/PaymentFailed'
+  publishOrderCancelled:
+    action: send
+    summary: Order service announces a cancelled order.
+    channel:
+      $ref: '#/channels/orderCancelled'
+    messages:
+      - $ref: '#/channels/orderCancelled/messages/OrderCancelled'
+  inventoryReceivesOrderCancelled:
+    action: receive
+    summary: Inventory releases whatever the order held (no-op if nothing).
+    channel:
+      $ref: '#/channels/orderCancelled'
+    messages:
+      - $ref: '#/channels/orderCancelled/messages/OrderCancelled'
+  notificationReceivesOrderCancelled:
+    action: receive
+    summary: Notification tells the customer why the order was cancelled.
+    channel:
+      $ref: '#/channels/orderCancelled'
+    messages:
+      - $ref: '#/channels/orderCancelled/messages/OrderCancelled'
+  publishStockReleased:
+    action: send
+    summary: Inventory announces released stock, at most once per order.
+    channel:
+      $ref: '#/channels/stockReleased'
+    messages:
+      - $ref: '#/channels/stockReleased/messages/StockReleased'
 components:
   channelBindings:
     fanout:
@@ -160,3 +248,27 @@ components:
       summary: The order is Confirmed.
       payload:
         $ref: './schemas/order-confirmed.v1.json'
+    StockRejected:
+      name: StockRejected
+      title: Stock rejected (v1)
+      summary: Nothing was held for the order; every short line is listed.
+      payload:
+        $ref: './schemas/stock-rejected.v1.json'
+    PaymentFailed:
+      name: PaymentFailed
+      title: Payment failed (v1)
+      summary: The payment was declined; no charge was made.
+      payload:
+        $ref: './schemas/payment-failed.v1.json'
+    OrderCancelled:
+      name: OrderCancelled
+      title: Order cancelled (v1)
+      summary: The order is Cancelled (final), with a reason.
+      payload:
+        $ref: './schemas/order-cancelled.v1.json'
+    StockReleased:
+      name: StockReleased
+      title: Stock released (v1)
+      summary: Stock held for a cancelled order is available again.
+      payload:
+        $ref: './schemas/stock-released.v1.json'

@@ -70,6 +70,7 @@ Seed catalog:
 | Edge: duplicate SKU lines | x | | | | `OrderTests`, `CatalogTests` |
 | Edge: concurrent orders | x | | | | `CatalogTests` (parallel reservations) |
 | Edge: payment news overtakes the stock hold | | x | | x | confirm-order: "Payment news that overtakes the stock hold"; E2E stress run |
+| Edge: payment news before the order is tracked (week 4) | | x | | x | confirm-order: "arrives before the order is being tracked"; E2E stress run |
 | Edge: messages arrive out of order at Notification | | x | | x | order-confirmed-notification: "listed in the order things happened"; E2E inbox order |
 
 New test projects: `OrderFlow.Inventory.UnitTests`, `OrderFlow.Inventory.ComponentTests`, `OrderFlow.Payment.ComponentTests`. Contract tests become one parameterized test per event schema. The UI test covers polling until Confirmed.

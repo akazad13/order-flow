@@ -6,22 +6,26 @@ public sealed record RequestedLine(string Sku, int Quantity);
 
 public sealed record ReservedLine(string Sku, int Quantity, decimal UnitPrice);
 
+/// <summary>An unknown SKU is a shortage with <see cref="Available"/> 0 (spec 002, R-2).</summary>
+public sealed record Shortage(string Sku, int Requested, int Available);
+
 public abstract record ReservationResult
 {
     public sealed record Reserved(IReadOnlyList<ReservedLine> Lines, decimal Total) : ReservationResult;
 
-    public sealed record Rejected(string Reason) : ReservationResult;
+    public sealed record Rejected(IReadOnlyList<Shortage> Shortages) : ReservationResult;
 }
 
 /// <summary>
-/// Items, prices and available stock. Thread-safe: one lock makes a reservation
-/// all or nothing across every line (spec 001, R-1) and prevents overselling.
-/// In memory until durable storage arrives in week 5.
+/// Items, prices, available stock and what each order holds. Thread-safe: one lock
+/// makes a reservation all or nothing across every line (spec 001, R-1) and makes a
+/// release happen at most once (spec 003, R-2). In memory until week 5.
 /// </summary>
 public sealed class Catalog
 {
     private readonly Lock _lock = new();
     private readonly Dictionary<string, CatalogItem> _items = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<Guid, IReadOnlyList<ReservedLine>> _reservations = new();
 
     public Catalog(IEnumerable<CatalogItem>? seed = null)
     {
@@ -58,7 +62,7 @@ public sealed class Catalog
         return item;
     }
 
-    public ReservationResult TryReserve(IReadOnlyList<RequestedLine> lines)
+    public ReservationResult TryReserve(Guid orderId, IReadOnlyList<RequestedLine> lines)
     {
         var merged = lines
             .GroupBy(l => l.Sku, StringComparer.OrdinalIgnoreCase)
@@ -67,17 +71,14 @@ public sealed class Catalog
 
         lock (_lock)
         {
-            foreach (var line in merged)
-            {
-                if (!_items.TryGetValue(line.Sku, out var item))
-                {
-                    return new ReservationResult.Rejected($"Unknown SKU {line.Sku}.");
-                }
+            var shortages = merged
+                .Select(l => new Shortage(l.Sku, l.Quantity, _items.GetValueOrDefault(l.Sku)?.Available ?? 0))
+                .Where(s => s.Available < s.Requested)
+                .ToList();
 
-                if (item.Available < line.Quantity)
-                {
-                    return new ReservationResult.Rejected($"Only {item.Available} of {line.Sku} available, {line.Quantity} requested.");
-                }
+            if (shortages.Count > 0)
+            {
+                return new ReservationResult.Rejected(shortages);
             }
 
             var reserved = new List<ReservedLine>(merged.Count);
@@ -88,7 +89,34 @@ public sealed class Catalog
                 reserved.Add(new ReservedLine(item.Sku, line.Quantity, item.UnitPrice));
             }
 
+            _reservations[orderId] = reserved;
             return new ReservationResult.Reserved(reserved, reserved.Sum(l => l.Quantity * l.UnitPrice));
+        }
+    }
+
+    /// <summary>
+    /// Returns the quantities held for the order to available stock. Returns the released
+    /// lines the first time, and nothing if the order held nothing or was already released.
+    /// </summary>
+    public IReadOnlyList<ReservedLine> Release(Guid orderId)
+    {
+        lock (_lock)
+        {
+            if (!_reservations.Remove(orderId, out var held))
+            {
+                return [];
+            }
+
+            foreach (var line in held)
+            {
+                // The item may have been replaced (PUT /stock) since; release onto the current record.
+                if (_items.TryGetValue(line.Sku, out var item))
+                {
+                    _items[line.Sku] = item with { Available = item.Available + line.Quantity };
+                }
+            }
+
+            return held;
         }
     }
 }

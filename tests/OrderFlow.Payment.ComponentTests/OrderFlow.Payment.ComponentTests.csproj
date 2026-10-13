@@ -17,6 +17,7 @@
   <ItemGroup>
     <!-- Feature files live with the specs at the repo root, not in the test project. -->
     <ReqnrollFeatureFiles Include="..\..\features\component\take-payment.feature" Link="Features\take-payment.feature" />
+    <ReqnrollFeatureFiles Include="..\..\features\component\decline-payment.feature" Link="Features\decline-payment.feature" />
   </ItemGroup>
 
   <ItemGroup>

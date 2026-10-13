@@ -20,6 +20,7 @@ describe('App', () => {
         status: 'Pending',
         lines: [{ sku: 'SKU-001', quantity: 1 }],
         total: null,
+        cancellation: null,
         placedAt: '2026-10-14T10:00:00Z',
       },
     });
@@ -39,6 +40,7 @@ describe('App', () => {
       status: 'Pending' as const,
       lines: [{ sku: 'SKU-001', quantity: 2 }],
       total: null,
+      cancellation: null,
       placedAt: '2026-10-14T10:00:00Z',
     };
     vi.mocked(clients.placeOrder).mockResolvedValue({ ok: true, order: pending });
@@ -53,6 +55,32 @@ describe('App', () => {
     expect(await within(order).findByText('Confirmed', {}, { timeout: 4 * POLL_MS })).toBeInTheDocument();
     expect(within(order).getByText('Total: 37.00')).toBeInTheDocument();
     expect(clients.getOrder).toHaveBeenCalledWith(pending.orderId);
+  });
+
+  it('shows why a cancelled order was cancelled', async () => {
+    const pending = {
+      orderId: '8f6c1d1e-6f0b-4c64-9d7e-0a8f6b1b2c3d',
+      customerId: 'customer-1',
+      status: 'Pending' as const,
+      lines: [{ sku: 'SKU-002', quantity: 2 }],
+      total: null,
+      cancellation: null,
+      placedAt: '2026-10-14T10:00:00Z',
+    };
+    vi.mocked(clients.placeOrder).mockResolvedValue({ ok: true, order: pending });
+    vi.mocked(clients.getOrder).mockResolvedValue({
+      ...pending,
+      status: 'Cancelled',
+      cancellation: { reason: 'OutOfStock', detail: 'Only 1 of SKU-002 available, 2 requested.' },
+    });
+
+    render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: 'Place order' }));
+
+    const order = await screen.findByRole('region', { name: 'Order' });
+    expect(await within(order).findByText('Cancelled', {}, { timeout: 4 * POLL_MS })).toBeInTheDocument();
+    expect(within(order).getByText('Reason: some items are out of stock')).toBeInTheDocument();
+    expect(within(order).getByText('Only 1 of SKU-002 available, 2 requested.')).toBeInTheDocument();
   });
 
   it('lists validation errors from the API', async () => {

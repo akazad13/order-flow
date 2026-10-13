@@ -28,6 +28,20 @@ public class EventSchemaContractTests
         },
         { "payment-succeeded.v1.json", new PaymentSucceeded(Guid.NewGuid(), Guid.NewGuid(), 62.00m, DateTimeOffset.UtcNow) },
         { "order-confirmed.v1.json", new OrderConfirmed(Guid.NewGuid(), "customer-1", 62.00m, DateTimeOffset.UtcNow) },
+        {
+            "stock-rejected.v1.json",
+            new StockRejected(Guid.NewGuid(), "customer-1", [new StockShortage("SKU-002", 3, 1), new StockShortage("NO-SUCH", 1, 0)], DateTimeOffset.UtcNow)
+        },
+        { "payment-failed.v1.json", new PaymentFailed(Guid.NewGuid(), "Card declined", DateTimeOffset.UtcNow) },
+        {
+            "order-cancelled.v1.json",
+            new OrderCancelled(Guid.NewGuid(), "customer-1", CancellationReasons.OutOfStock, "Only 1 of SKU-002 available, 3 requested.", DateTimeOffset.UtcNow)
+        },
+        {
+            "order-cancelled.v1.json",
+            new OrderCancelled(Guid.NewGuid(), "customer-1", CancellationReasons.PaymentDeclined, "Card declined", DateTimeOffset.UtcNow)
+        },
+        { "stock-released.v1.json", new StockReleased(Guid.NewGuid(), [new StockReleasedLine("SKU-001", 3)], DateTimeOffset.UtcNow) },
     };
 
     [Theory]

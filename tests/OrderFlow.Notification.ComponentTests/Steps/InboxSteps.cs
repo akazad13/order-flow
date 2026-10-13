@@ -40,6 +40,16 @@ public sealed class InboxSteps(NotificationServiceFactory service)
         (await consumer.Consumed.Any<OrderConfirmed>(m => m.Context.Message.OrderId == orderConfirmed.OrderId)).ShouldBeTrue();
     }
 
+    [When("an OrderCancelled event with reason {string} arrives for customer {string}")]
+    public async Task WhenAnOrderCancelledEventArrives(string reason, string customerId)
+    {
+        _ = service.CreateClient();
+        await service.Harness.Bus.Publish(new OrderCancelled(_orderId, customerId, reason, "detail", DateTimeOffset.UtcNow));
+
+        var consumer = service.Harness.GetConsumerHarness<OrderCancelledConsumer>();
+        (await consumer.Consumed.Any<OrderCancelled>(m => m.Context.Message.OrderId == _orderId)).ShouldBeTrue();
+    }
+
     [Given("an order for customer {string} was placed and then confirmed")]
     public void GivenAnOrderWasPlacedAndThenConfirmed(string customerId)
     {

@@ -111,5 +111,49 @@ public class OrderTests
         order.Total.ShouldBe(37.00m);
     }
 
+    [Fact]
+    public void A_pending_order_can_be_cancelled_with_a_reason()
+    {
+        var order = Placed();
+
+        order.Cancel("OutOfStock", "Only 1 of SKU-001 available, 2 requested.");
+
+        order.Status.ShouldBe(OrderStatus.Cancelled);
+        order.Cancellation.ShouldBe(new Cancellation("OutOfStock", "Only 1 of SKU-001 available, 2 requested."));
+    }
+
+    [Fact]
+    public void A_cancelled_order_is_never_confirmed()
+    {
+        var order = Placed();
+        order.RecordStockHeld(37.00m);
+        order.Cancel("PaymentDeclined", "Card declined");
+
+        Should.Throw<InvalidOperationException>(() => order.Confirm());
+        order.Status.ShouldBe(OrderStatus.Cancelled);
+    }
+
+    [Fact]
+    public void Cancelling_twice_keeps_the_first_reason()
+    {
+        var order = Placed();
+        order.Cancel("OutOfStock", "first");
+
+        order.Cancel("PaymentDeclined", "second");
+
+        order.Cancellation!.Reason.ShouldBe("OutOfStock");
+    }
+
+    [Fact]
+    public void A_confirmed_order_cannot_be_cancelled_by_these_flows()
+    {
+        var order = Placed();
+        order.RecordStockHeld(37.00m);
+        order.Confirm();
+
+        Should.Throw<InvalidOperationException>(() => order.Cancel("PaymentDeclined", "late"));
+        order.Status.ShouldBe(OrderStatus.Confirmed);
+    }
+
     private static Order Placed() => Order.Place("customer-1", [new OrderLine("SKU-001", 2)], Clock).Order!;
 }

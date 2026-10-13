@@ -44,3 +44,50 @@ public sealed class ConfirmOrderActivity(IOrderRepository orders, TimeProvider c
 
     public void Accept(StateMachineVisitor visitor) => visitor.Visit(this);
 }
+
+/// <summary>Stock was short: cancel the order as OutOfStock (spec 002).</summary>
+public sealed class CancelForShortageActivity(IOrderRepository orders, TimeProvider clock) : IStateMachineActivity<OrderState, StockRejected>
+{
+    public async Task Execute(BehaviorContext<OrderState, StockRejected> context, IBehavior<OrderState, StockRejected> next)
+    {
+        var detail = string.Join(" ", context.Message.Shortages.Select(s => $"Only {s.Available} of {s.Sku} available, {s.Requested} requested."));
+        await OrderCancellation.Cancel(context, orders, clock, context.Message.OrderId, CancellationReasons.OutOfStock, detail);
+        await next.Execute(context);
+    }
+
+    public Task Faulted<TException>(BehaviorExceptionContext<OrderState, StockRejected, TException> context, IBehavior<OrderState, StockRejected> next)
+        where TException : Exception => next.Faulted(context);
+
+    public void Probe(ProbeContext context) => context.CreateScope("cancel-for-shortage");
+
+    public void Accept(StateMachineVisitor visitor) => visitor.Visit(this);
+}
+
+/// <summary>Payment was declined: cancel the order as PaymentDeclined (spec 003). Inventory releases the stock.</summary>
+public sealed class CancelForPaymentActivity(IOrderRepository orders, TimeProvider clock) : IStateMachineActivity<OrderState, PaymentFailed>
+{
+    public async Task Execute(BehaviorContext<OrderState, PaymentFailed> context, IBehavior<OrderState, PaymentFailed> next)
+    {
+        await OrderCancellation.Cancel(context, orders, clock, context.Message.OrderId, CancellationReasons.PaymentDeclined, context.Message.Reason);
+        await next.Execute(context);
+    }
+
+    public Task Faulted<TException>(BehaviorExceptionContext<OrderState, PaymentFailed, TException> context, IBehavior<OrderState, PaymentFailed> next)
+        where TException : Exception => next.Faulted(context);
+
+    public void Probe(ProbeContext context) => context.CreateScope("cancel-for-payment");
+
+    public void Accept(StateMachineVisitor visitor) => visitor.Visit(this);
+}
+
+internal static class OrderCancellation
+{
+    public static async Task Cancel(ConsumeContext context, IOrderRepository orders, TimeProvider clock, Guid orderId, string reason, string detail)
+    {
+        var order = await orders.GetAsync(orderId, context.CancellationToken)
+            ?? throw new InvalidOperationException($"Order {orderId} not found.");
+
+        order.Cancel(reason, detail);
+        await context.Publish(new OrderCancelled(order.Id, order.CustomerId, reason, detail, clock.GetUtcNow()));
+    }
+}
