@@ -43,7 +43,7 @@ npm ci && npm run lint:contracts
 End-to-end, against the full stack:
 
 ```bash
-docker compose up -d --build
+docker compose up -d --build --force-recreate
 ```
 
 ```bash
@@ -52,13 +52,13 @@ cd e2e && npm ci && npx playwright install chromium && npm run wait && npm test
 
 ## Run the stack
 
-`docker compose up -d --build` starts RabbitMQ and every service.
+`docker compose up -d --build --force-recreate` starts RabbitMQ and every service. Keep `--force-recreate`: without it Docker Desktop sometimes keeps old containers running after a rebuild.
 
 | Service | URL |
 | --- | --- |
 | Web UI | http://localhost:5180 |
 | Order API | http://localhost:5101 |
-| Inventory | http://localhost:5102 |
+| Inventory (`GET /stock`; `PUT /stock/{sku}` for tests) | http://localhost:5102 |
 | Payment | http://localhost:5103 |
 | Notification (fake inbox) | http://localhost:5104 |
 | RabbitMQ management | http://localhost:15672 (guest / guest) |

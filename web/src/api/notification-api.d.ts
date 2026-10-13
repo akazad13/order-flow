@@ -13,7 +13,7 @@ export interface paths {
         };
         /**
          * List a customer's messages
-         * @description Oldest first. Empty array when the customer has no messages.
+         * @description Ordered by `occurredAt` (when the event happened), oldest first, regardless of the order messages arrived. Empty array when the customer has no messages.
          */
         get: operations["getInbox"];
         put?: never;
@@ -36,7 +36,15 @@ export interface components {
             orderId: string;
             /** @example We received your order */
             text: string;
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description When the event behind the message happened (e.g. the order was placed).
+             */
+            occurredAt: string;
+            /**
+             * Format: date-time
+             * @description When the Notification service received the event.
+             */
             receivedAt: string;
         };
     };

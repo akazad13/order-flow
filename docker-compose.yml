@@ -32,6 +32,9 @@ services:
     build:
       <<: *service-build
       args: { PROJECT: OrderFlow.Inventory }
+    environment:
+      RabbitMq__Host: rabbitmq
+      Inventory__EnableTestEndpoints: "true" # PUT /stock/{sku} for tests and demos (spec 001, Q4)
     ports: ["5102:8080"]
 
   payment:

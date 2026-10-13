@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: OrderFlow Order API
-  version: 0.1.0
-  description: Customer-facing API for placing and reading orders. Spec 000 (walking skeleton).
+  version: 0.2.0
+  description: Customer-facing API for placing and reading orders. Specs 000 and 001.
   contact:
     name: OrderFlow
     url: https://example.com/orderflow
@@ -93,11 +93,11 @@ components:
             $ref: '#/components/schemas/OrderLine'
     OrderStatus:
       type: string
-      enum: [Pending]
-      description: Grows with later specs (Confirmed, Cancelled).
+      enum: [Pending, Confirmed]
+      description: Only moves forward. Grows with later specs (Cancelled).
     Order:
       type: object
-      required: [orderId, customerId, status, lines, placedAt]
+      required: [orderId, customerId, status, lines, total, placedAt]
       properties:
         orderId:
           type: string
@@ -110,6 +110,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/OrderLine'
+        total:
+          type: [number, 'null']
+          minimum: 0
+          description: Sum of quantity times unit price. Null until stock is held and the order is priced.
+          examples: [37.0]
         placedAt:
           type: string
           format: date-time

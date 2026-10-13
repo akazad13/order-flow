@@ -22,6 +22,13 @@ export async function placeOrder(customerId: string, sku: string, quantity: numb
   return { ok: false, problem: error as ValidationProblem };
 }
 
+export async function getOrder(orderId: string): Promise<Order | null> {
+  const { data } = await orderApi.GET('/orders/{orderId}', {
+    params: { path: { orderId } },
+  });
+  return data ?? null;
+}
+
 export async function getInbox(customerId: string): Promise<InboxMessage[]> {
   const { data } = await notificationApi.GET('/inbox/{customerId}', {
     params: { path: { customerId } },

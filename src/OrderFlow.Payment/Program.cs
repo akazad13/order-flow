@@ -1,9 +1,12 @@
+using OrderFlow.Payment.Consumers;
+using OrderFlow.Payment.Gateway;
 using OrderFlow.ServiceDefaults;
 
-// Walking skeleton: connected to the broker, no consumers yet (arrive with spec 002/003).
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddOrderFlowServiceDefaults("payment");
+builder.AddOrderFlowServiceDefaults("payment", bus => bus.AddConsumer<StockReservedConsumer>());
+builder.Services.AddSingleton<FakePaymentGateway>();
+builder.Services.AddSingleton<IPaymentGateway>(sp => sp.GetRequiredService<FakePaymentGateway>());
 
 var app = builder.Build();
 

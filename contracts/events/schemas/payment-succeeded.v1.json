@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orderflow.example.com/events/payment-succeeded.v1.json",
+  "title": "PaymentSucceeded v1",
+  "description": "The `message` body of the MassTransit envelope published on the payment-succeeded exchange.",
+  "type": "object",
+  "required": ["orderId", "paymentId", "amount", "paidAt"],
+  "additionalProperties": false,
+  "properties": {
+    "orderId": { "type": "string", "format": "uuid" },
+    "paymentId": { "type": "string", "format": "uuid" },
+    "amount": { "$ref": "#/$defs/money" },
+    "paidAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "money": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)([.][0-9]{1,2})?$",
+      "description": "Decimal amount in the shop currency, as a string (MassTransit writes decimals as strings to avoid float rounding). Example: \"62.00\"."
+    }
+  }
+}

@@ -12,6 +12,7 @@ public sealed record OrderResponse(
     string CustomerId,
     string Status,
     IReadOnlyList<OrderLineDto> Lines,
+    decimal? Total,
     DateTimeOffset PlacedAt)
 {
     public static OrderResponse From(Order order) => new(
@@ -19,5 +20,6 @@ public sealed record OrderResponse(
         order.CustomerId,
         order.Status.ToString(),
         order.Lines.Select(l => new OrderLineDto(l.Sku, l.Quantity)).ToList(),
+        order.Total,
         order.PlacedAt);
 }

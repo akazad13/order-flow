@@ -1,11 +1,14 @@
 asyncapi: 3.1.0
 info:
   title: OrderFlow events
-  version: 0.1.0
+  version: 0.2.0
   description: |
     Events exchanged between OrderFlow services over RabbitMQ (MassTransit v8).
     MassTransit wraps each payload in an envelope; the schemas below describe the
     envelope's `message` field. Message types use URNs such as `orderflow:order-placed:v1`.
+    Each event has a fanout exchange named after it; each consuming service binds its own queue.
+    Amounts are decimal strings in the shop currency ("62.00"): MassTransit serializes
+    `decimal` as a string so no consumer loses precision to floating point.
 defaultContentType: application/json
 servers:
   local:
@@ -15,18 +18,36 @@ servers:
 channels:
   orderPlaced:
     address: order-placed
-    description: Fanout exchange; one queue per consuming service.
+    description: An order was accepted and is Pending.
     messages:
       OrderPlaced:
         $ref: '#/components/messages/OrderPlaced'
     bindings:
-      amqp:
-        is: routingKey
-        exchange:
-          name: order-placed
-          type: fanout
-          durable: true
-          autoDelete: false
+      $ref: '#/components/channelBindings/fanout'
+  stockReserved:
+    address: stock-reserved
+    description: Stock for every line of an order is held, and the order is priced.
+    messages:
+      StockReserved:
+        $ref: '#/components/messages/StockReserved'
+    bindings:
+      $ref: '#/components/channelBindings/fanout'
+  paymentSucceeded:
+    address: payment-succeeded
+    description: The customer was charged the order total.
+    messages:
+      PaymentSucceeded:
+        $ref: '#/components/messages/PaymentSucceeded'
+    bindings:
+      $ref: '#/components/channelBindings/fanout'
+  orderConfirmed:
+    address: order-confirmed
+    description: Stock is held and payment succeeded; the order is Confirmed.
+    messages:
+      OrderConfirmed:
+        $ref: '#/components/messages/OrderConfirmed'
+    bindings:
+      $ref: '#/components/channelBindings/fanout'
 operations:
   publishOrderPlaced:
     action: send
@@ -35,14 +56,85 @@ operations:
       $ref: '#/channels/orderPlaced'
     messages:
       - $ref: '#/channels/orderPlaced/messages/OrderPlaced'
-  notificationReceivesOrderPlaced:
+  inventoryReceivesOrderPlaced:
     action: receive
-    summary: Notification service tells the customer the order was received.
+    summary: Inventory holds stock for the order, all or nothing.
     channel:
       $ref: '#/channels/orderPlaced'
     messages:
       - $ref: '#/channels/orderPlaced/messages/OrderPlaced'
+  orderReceivesOrderPlaced:
+    action: receive
+    summary: The Order state machine starts tracking the order.
+    channel:
+      $ref: '#/channels/orderPlaced'
+    messages:
+      - $ref: '#/channels/orderPlaced/messages/OrderPlaced'
+  notificationReceivesOrderPlaced:
+    action: receive
+    summary: Notification tells the customer the order was received.
+    channel:
+      $ref: '#/channels/orderPlaced'
+    messages:
+      - $ref: '#/channels/orderPlaced/messages/OrderPlaced'
+  publishStockReserved:
+    action: send
+    summary: Inventory announces that stock is held and the order is priced.
+    channel:
+      $ref: '#/channels/stockReserved'
+    messages:
+      - $ref: '#/channels/stockReserved/messages/StockReserved'
+  paymentReceivesStockReserved:
+    action: receive
+    summary: Payment charges the order total.
+    channel:
+      $ref: '#/channels/stockReserved'
+    messages:
+      - $ref: '#/channels/stockReserved/messages/StockReserved'
+  orderReceivesStockReserved:
+    action: receive
+    summary: The Order state machine records the total and waits for payment.
+    channel:
+      $ref: '#/channels/stockReserved'
+    messages:
+      - $ref: '#/channels/stockReserved/messages/StockReserved'
+  publishPaymentSucceeded:
+    action: send
+    summary: Payment announces a successful charge.
+    channel:
+      $ref: '#/channels/paymentSucceeded'
+    messages:
+      - $ref: '#/channels/paymentSucceeded/messages/PaymentSucceeded'
+  orderReceivesPaymentSucceeded:
+    action: receive
+    summary: The Order state machine confirms the order.
+    channel:
+      $ref: '#/channels/paymentSucceeded'
+    messages:
+      - $ref: '#/channels/paymentSucceeded/messages/PaymentSucceeded'
+  publishOrderConfirmed:
+    action: send
+    summary: Order service announces a confirmed order.
+    channel:
+      $ref: '#/channels/orderConfirmed'
+    messages:
+      - $ref: '#/channels/orderConfirmed/messages/OrderConfirmed'
+  notificationReceivesOrderConfirmed:
+    action: receive
+    summary: Notification tells the customer the order is confirmed.
+    channel:
+      $ref: '#/channels/orderConfirmed'
+    messages:
+      - $ref: '#/channels/orderConfirmed/messages/OrderConfirmed'
 components:
+  channelBindings:
+    fanout:
+      amqp:
+        is: routingKey
+        exchange:
+          type: fanout
+          durable: true
+          autoDelete: false
   messages:
     OrderPlaced:
       name: OrderPlaced
@@ -50,3 +142,21 @@ components:
       summary: A customer's order was accepted and is Pending.
       payload:
         $ref: './schemas/order-placed.v1.json'
+    StockReserved:
+      name: StockReserved
+      title: Stock reserved (v1)
+      summary: Every line of the order is held; lines carry their unit price and the order its total.
+      payload:
+        $ref: './schemas/stock-reserved.v1.json'
+    PaymentSucceeded:
+      name: PaymentSucceeded
+      title: Payment succeeded (v1)
+      summary: The customer was charged the order total.
+      payload:
+        $ref: './schemas/payment-succeeded.v1.json'
+    OrderConfirmed:
+      name: OrderConfirmed
+      title: Order confirmed (v1)
+      summary: The order is Confirmed.
+      payload:
+        $ref: './schemas/order-confirmed.v1.json'

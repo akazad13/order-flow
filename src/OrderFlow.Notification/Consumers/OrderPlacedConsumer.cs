@@ -11,7 +11,7 @@ public sealed class OrderPlacedConsumer(IFakeInbox inbox, TimeProvider clock) : 
     public Task Consume(ConsumeContext<OrderPlaced> context)
     {
         var order = context.Message;
-        inbox.Deliver(new InboxMessage(Guid.NewGuid(), order.CustomerId, order.OrderId, OrderReceivedText, clock.GetUtcNow()));
+        inbox.Deliver(new InboxMessage(Guid.NewGuid(), order.CustomerId, order.OrderId, OrderReceivedText, order.PlacedAt, clock.GetUtcNow()));
         return Task.CompletedTask;
     }
 }

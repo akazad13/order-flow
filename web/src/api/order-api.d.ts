@@ -59,16 +59,21 @@ export interface components {
             lines: components["schemas"]["OrderLine"][];
         };
         /**
-         * @description Grows with later specs (Confirmed, Cancelled).
+         * @description Only moves forward. Grows with later specs (Cancelled).
          * @enum {string}
          */
-        OrderStatus: "Pending";
+        OrderStatus: "Pending" | "Confirmed";
         Order: {
             /** Format: uuid */
             orderId: string;
             customerId: string;
             status: components["schemas"]["OrderStatus"];
             lines: components["schemas"]["OrderLine"][];
+            /**
+             * @description Sum of quantity times unit price. Null until stock is held and the order is priced.
+             * @example 37
+             */
+            total: number | null;
             /** Format: date-time */
             placedAt: string;
         };

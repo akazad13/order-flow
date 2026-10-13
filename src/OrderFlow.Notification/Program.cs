@@ -4,7 +4,11 @@ using OrderFlow.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddOrderFlowServiceDefaults("notification", bus => bus.AddConsumer<OrderPlacedConsumer>());
+builder.AddOrderFlowServiceDefaults("notification", bus =>
+{
+    bus.AddConsumer<OrderPlacedConsumer>();
+    bus.AddConsumer<OrderConfirmedConsumer>();
+});
 builder.Services.AddSingleton<IFakeInbox, InMemoryFakeInbox>();
 
 var app = builder.Build();

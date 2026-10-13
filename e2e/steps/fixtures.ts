@@ -1,13 +1,19 @@
 import { randomUUID } from 'node:crypto';
 import { test as base, createBdd } from 'playwright-bdd';
 
-type Customer = { id: string };
+// Per-scenario data. Fresh IDs keep parallel runs from seeing each other's
+// inbox or draining each other's stock (constitution V).
+type Scenario = {
+  customerId: string;
+  sku?: string;
+};
 
-export const test = base.extend<{ customer: Customer }>({
-  // A fresh customer per scenario keeps parallel runs from seeing each other's inbox.
-  customer: async ({}, use) => {
-    await use({ id: `e2e-${randomUUID()}` });
+export const test = base.extend<{ scenario: Scenario }>({
+  scenario: async ({}, use) => {
+    await use({ customerId: `e2e-${randomUUID()}` });
   },
 });
 
 export const { Given, When, Then } = createBdd(test);
+
+export const inventoryUrl = process.env.INVENTORY_URL ?? 'http://localhost:5102';

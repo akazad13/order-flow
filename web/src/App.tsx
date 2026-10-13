@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { getInbox, placeOrder, type InboxMessage, type Order } from './api/clients';
+import { getInbox, getOrder, placeOrder, type InboxMessage, type Order } from './api/clients';
 
-const INBOX_POLL_MS = 1000;
+// Spec 001 Q3: poll until SignalR arrives in spec 005.
+export const POLL_MS = 1000;
 
 export function App() {
   const [customerId, setCustomerId] = useState('customer-1');
@@ -11,21 +12,38 @@ export function App() {
   const [errors, setErrors] = useState<string[]>([]);
   const [inbox, setInbox] = useState<InboxMessage[]>([]);
 
-  // Live status arrives in spec 005 (SignalR); until then, poll the fake inbox.
+  const orderId = order?.orderId;
+  const orderCustomerId = order?.customerId;
+  const isPending = order?.status === 'Pending';
+
+  // Re-read the order while it is Pending (spec 001, AC-5).
   useEffect(() => {
-    if (!order) return;
+    if (!orderId || !isPending) return;
     let cancelled = false;
-    const refresh = async () => {
-      const messages = await getInbox(order.customerId);
-      if (!cancelled) setInbox(messages);
-    };
-    void refresh();
-    const timer = setInterval(refresh, INBOX_POLL_MS);
+    const timer = setInterval(async () => {
+      const latest = await getOrder(orderId);
+      if (!cancelled && latest) setOrder(latest);
+    }, POLL_MS);
     return () => {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [order]);
+  }, [orderId, isPending]);
+
+  useEffect(() => {
+    if (!orderCustomerId) return;
+    let cancelled = false;
+    const refresh = async () => {
+      const messages = await getInbox(orderCustomerId);
+      if (!cancelled) setInbox(messages);
+    };
+    void refresh();
+    const timer = setInterval(refresh, POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [orderId, orderCustomerId]);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -76,6 +94,7 @@ export function App() {
           <p>
             Status: <strong>{order.status}</strong>
           </p>
+          {order.total != null && <p>Total: {order.total.toFixed(2)}</p>}
         </section>
       )}
 
@@ -85,11 +104,11 @@ export function App() {
           {inbox.length === 0 ? (
             <p>No messages yet.</p>
           ) : (
-            <ul>
+            <ol>
               {inbox.map((message) => (
                 <li key={message.messageId}>{message.text}</li>
               ))}
-            </ul>
+            </ol>
           )}
         </section>
       )}

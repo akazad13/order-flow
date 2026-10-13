@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OrderFlow Notification API (fake inbox)
-  version: 0.1.0
+  version: 0.2.0
   description: Read side of the fake customer inbox. Lets the UI and tests see what the customer was told.
   contact:
     name: OrderFlow
@@ -18,7 +18,7 @@ paths:
       operationId: getInbox
       tags: [inbox]
       summary: List a customer's messages
-      description: Oldest first. Empty array when the customer has no messages.
+      description: Ordered by `occurredAt` (when the event happened), oldest first, regardless of the order messages arrived. Empty array when the customer has no messages.
       parameters:
         - name: customerId
           in: path
@@ -38,7 +38,7 @@ components:
   schemas:
     InboxMessage:
       type: object
-      required: [messageId, customerId, orderId, text, receivedAt]
+      required: [messageId, customerId, orderId, text, occurredAt, receivedAt]
       properties:
         messageId:
           type: string
@@ -51,6 +51,11 @@ components:
         text:
           type: string
           examples: [We received your order]
+        occurredAt:
+          type: string
+          format: date-time
+          description: When the event behind the message happened (e.g. the order was placed).
         receivedAt:
           type: string
           format: date-time
+          description: When the Notification service received the event.

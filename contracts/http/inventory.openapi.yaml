@@ -1,0 +1,106 @@
+openapi: 3.1.0
+info:
+  title: OrderFlow Inventory API
+  version: 0.1.0
+  description: Catalog and stock levels. Spec 001.
+  contact:
+    name: OrderFlow
+    url: https://example.com/orderflow
+servers:
+  - url: http://localhost:5102
+    description: Local (dotnet run)
+tags:
+  - name: stock
+    description: Catalog items and available stock.
+paths:
+  /stock:
+    get:
+      operationId: listStock
+      tags: [stock]
+      summary: List catalog items
+      description: Every catalog item with its unit price and available quantity, ordered by SKU.
+      responses:
+        '200':
+          description: The catalog.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StockItem'
+  /stock/{sku}:
+    parameters:
+      - name: sku
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getStock
+      tags: [stock]
+      summary: Get one catalog item
+      description: Unit price and available quantity for one SKU.
+      responses:
+        '200':
+          description: The item.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockItem'
+        '404':
+          description: Unknown SKU.
+    put:
+      operationId: setStock
+      tags: [stock]
+      summary: Create or replace a catalog item (test only)
+      description: |
+        Sets the name, unit price and available quantity of a SKU, creating it if needed.
+        Only exposed when `Inventory:EnableTestEndpoints` is true (Development, docker compose); otherwise 404.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetStockRequest'
+      responses:
+        '200':
+          description: The item as stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockItem'
+        '400':
+          description: Invalid values.
+components:
+  schemas:
+    StockItem:
+      type: object
+      required: [sku, name, unitPrice, available]
+      properties:
+        sku:
+          type: string
+          examples: [SKU-001]
+        name:
+          type: string
+          examples: [Coffee beans, 1 kg]
+        unitPrice:
+          type: number
+          minimum: 0
+          examples: [18.5]
+        available:
+          type: integer
+          minimum: 0
+          examples: [1000]
+    SetStockRequest:
+      type: object
+      required: [name, unitPrice, available]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        unitPrice:
+          type: number
+          minimum: 0
+        available:
+          type: integer
+          minimum: 0

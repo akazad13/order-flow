@@ -3,6 +3,7 @@ namespace OrderFlow.OrderService.Domain;
 public enum OrderStatus
 {
     Pending,
+    Confirmed,
 }
 
 public sealed record OrderLine(string Sku, int Quantity);
@@ -24,9 +25,13 @@ public sealed class Order
     public DateTimeOffset PlacedAt { get; }
     public OrderStatus Status { get; private set; }
 
+    /// <summary>Null until stock is held and Inventory has priced the order (spec 001, AC-6).</summary>
+    public decimal? Total { get; private set; }
+
     /// <summary>
     /// Spec 000, AC-1 and AC-2: a valid order starts Pending; an invalid one is
-    /// rejected with one error per offending field.
+    /// rejected with one error per offending field. Spec 001: lines for the same
+    /// SKU are merged.
     /// </summary>
     public static PlaceOrderResult Place(string? customerId, IReadOnlyList<OrderLine>? lines, TimeProvider clock)
     {
@@ -62,7 +67,35 @@ public sealed class Order
             return PlaceOrderResult.Invalid(errors);
         }
 
-        return PlaceOrderResult.Placed(new Order(Guid.NewGuid(), customerId!, lines!, clock.GetUtcNow()));
+        var merged = lines!
+            .GroupBy(l => l.Sku, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new OrderLine(g.First().Sku, g.Sum(l => l.Quantity)))
+            .ToList();
+
+        return PlaceOrderResult.Placed(new Order(Guid.NewGuid(), customerId!, merged, clock.GetUtcNow()));
+    }
+
+    /// <summary>Stock for every line is held; the order now has a price.</summary>
+    public void RecordStockHeld(decimal total)
+    {
+        if (Status == OrderStatus.Pending)
+        {
+            Total = total;
+        }
+    }
+
+    /// <summary>
+    /// Spec 001: confirmed only after the stock hold (R-3); status never moves
+    /// back (R-4), so confirming twice is harmless.
+    /// </summary>
+    public void Confirm()
+    {
+        if (Total is null)
+        {
+            throw new InvalidOperationException($"Order {Id} cannot be confirmed before its stock is held.");
+        }
+
+        Status = OrderStatus.Confirmed;
     }
 }
 

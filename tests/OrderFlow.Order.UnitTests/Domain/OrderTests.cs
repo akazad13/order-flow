@@ -54,4 +54,62 @@ public class OrderTests
 
         result.Errors.Keys.ShouldBe(["customerId", "lines[0].sku", "lines[0].quantity"], ignoreOrder: true);
     }
+
+    [Fact]
+    public void Lines_for_the_same_sku_are_merged()
+    {
+        var result = Order.Place("customer-1", [new OrderLine("SKU-001", 2), new OrderLine("SKU-002", 1), new OrderLine("sku-001", 3)], Clock);
+
+        result.Order!.Lines.ShouldBe([new OrderLine("SKU-001", 5), new OrderLine("SKU-002", 1)]);
+    }
+
+    [Fact]
+    public void A_new_order_has_no_total()
+    {
+        Placed().Total.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Holding_stock_records_the_total()
+    {
+        var order = Placed();
+
+        order.RecordStockHeld(37.00m);
+
+        order.Total.ShouldBe(37.00m);
+        order.Status.ShouldBe(OrderStatus.Pending);
+    }
+
+    [Fact]
+    public void Order_is_confirmed_after_stock_is_held()
+    {
+        var order = Placed();
+        order.RecordStockHeld(37.00m);
+
+        order.Confirm();
+
+        order.Status.ShouldBe(OrderStatus.Confirmed);
+    }
+
+    [Fact]
+    public void Order_cannot_be_confirmed_before_stock_is_held()
+    {
+        Should.Throw<InvalidOperationException>(() => Placed().Confirm());
+    }
+
+    [Fact]
+    public void A_confirmed_order_stays_confirmed()
+    {
+        var order = Placed();
+        order.RecordStockHeld(37.00m);
+        order.Confirm();
+
+        order.Confirm();
+        order.RecordStockHeld(99.00m);
+
+        order.Status.ShouldBe(OrderStatus.Confirmed);
+        order.Total.ShouldBe(37.00m);
+    }
+
+    private static Order Placed() => Order.Place("customer-1", [new OrderLine("SKU-001", 2)], Clock).Order!;
 }
