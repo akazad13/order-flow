@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/OrderFlow.Contracts/OrderFlow.Contracts.csproj" />
+    <Project Path="src/OrderFlow.Inventory/OrderFlow.Inventory.csproj" />
+    <Project Path="src/OrderFlow.Notification/OrderFlow.Notification.csproj" />
+    <Project Path="src/OrderFlow.Order/OrderFlow.Order.csproj" />
+    <Project Path="src/OrderFlow.Payment/OrderFlow.Payment.csproj" />
+    <Project Path="src/OrderFlow.ServiceDefaults/OrderFlow.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OrderFlow.ContractTests/OrderFlow.ContractTests.csproj" />
+    <Project Path="tests/OrderFlow.Notification.ComponentTests/OrderFlow.Notification.ComponentTests.csproj" />
+    <Project Path="tests/OrderFlow.Order.ComponentTests/OrderFlow.Order.ComponentTests.csproj" />
+    <Project Path="tests/OrderFlow.Order.UnitTests/OrderFlow.Order.UnitTests.csproj" />
+  </Folder>
+</Solution>

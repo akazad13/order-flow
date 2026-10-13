@@ -1,0 +1,54 @@
+x-service: &service
+  build: &service-build
+    context: .
+    dockerfile: build/service.Dockerfile
+  environment:
+    RabbitMq__Host: rabbitmq
+  depends_on:
+    rabbitmq:
+      condition: service_healthy
+
+services:
+  rabbitmq:
+    image: rabbitmq:4.1-management
+    ports:
+      - "5672:5672"
+      - "15672:15672" # management UI, guest/guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
+  order:
+    <<: *service
+    build:
+      <<: *service-build
+      args: { PROJECT: OrderFlow.Order }
+    ports: ["5101:8080"]
+
+  inventory:
+    <<: *service
+    build:
+      <<: *service-build
+      args: { PROJECT: OrderFlow.Inventory }
+    ports: ["5102:8080"]
+
+  payment:
+    <<: *service
+    build:
+      <<: *service-build
+      args: { PROJECT: OrderFlow.Payment }
+    ports: ["5103:8080"]
+
+  notification:
+    <<: *service
+    build:
+      <<: *service-build
+      args: { PROJECT: OrderFlow.Notification }
+    ports: ["5104:8080"]
+
+  web:
+    build: ./web
+    ports: ["5180:80"]
+    depends_on: [order, notification]

@@ -1,0 +1,56 @@
+openapi: 3.1.0
+info:
+  title: OrderFlow Notification API (fake inbox)
+  version: 0.1.0
+  description: Read side of the fake customer inbox. Lets the UI and tests see what the customer was told.
+  contact:
+    name: OrderFlow
+    url: https://example.com/orderflow
+servers:
+  - url: http://localhost:5104
+    description: Local (dotnet run)
+tags:
+  - name: inbox
+    description: Messages sent to customers.
+paths:
+  /inbox/{customerId}:
+    get:
+      operationId: getInbox
+      tags: [inbox]
+      summary: List a customer's messages
+      description: Oldest first. Empty array when the customer has no messages.
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The customer's messages.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InboxMessage'
+components:
+  schemas:
+    InboxMessage:
+      type: object
+      required: [messageId, customerId, orderId, text, receivedAt]
+      properties:
+        messageId:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+        orderId:
+          type: string
+          format: uuid
+        text:
+          type: string
+          examples: [We received your order]
+        receivedAt:
+          type: string
+          format: date-time

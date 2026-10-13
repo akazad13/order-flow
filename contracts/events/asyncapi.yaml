@@ -1,0 +1,52 @@
+asyncapi: 3.1.0
+info:
+  title: OrderFlow events
+  version: 0.1.0
+  description: |
+    Events exchanged between OrderFlow services over RabbitMQ (MassTransit v8).
+    MassTransit wraps each payload in an envelope; the schemas below describe the
+    envelope's `message` field. Message types use URNs such as `orderflow:order-placed:v1`.
+defaultContentType: application/json
+servers:
+  local:
+    host: localhost:5672
+    protocol: amqp
+    description: RabbitMQ from docker-compose.yml
+channels:
+  orderPlaced:
+    address: order-placed
+    description: Fanout exchange; one queue per consuming service.
+    messages:
+      OrderPlaced:
+        $ref: '#/components/messages/OrderPlaced'
+    bindings:
+      amqp:
+        is: routingKey
+        exchange:
+          name: order-placed
+          type: fanout
+          durable: true
+          autoDelete: false
+operations:
+  publishOrderPlaced:
+    action: send
+    summary: Order service announces an accepted order.
+    channel:
+      $ref: '#/channels/orderPlaced'
+    messages:
+      - $ref: '#/channels/orderPlaced/messages/OrderPlaced'
+  notificationReceivesOrderPlaced:
+    action: receive
+    summary: Notification service tells the customer the order was received.
+    channel:
+      $ref: '#/channels/orderPlaced'
+    messages:
+      - $ref: '#/channels/orderPlaced/messages/OrderPlaced'
+components:
+  messages:
+    OrderPlaced:
+      name: OrderPlaced
+      title: Order placed (v1)
+      summary: A customer's order was accepted and is Pending.
+      payload:
+        $ref: './schemas/order-placed.v1.json'

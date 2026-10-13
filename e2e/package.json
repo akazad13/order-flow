@@ -1,0 +1,17 @@
+{
+  "name": "orderflow-e2e",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "wait": "node scripts/wait-for-stack.mjs",
+    "test": "bddgen && playwright test",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^26.6.5",
+    "playwright-bdd": "^9.2.1",
+    "typescript": "^5.9.3"
+  }
+}
