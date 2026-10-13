@@ -31,7 +31,8 @@ public static class ServiceDefaultsExtensions
             bus.UsingRabbitMq((context, cfg) =>
             {
                 var rabbit = builder.Configuration.GetSection("RabbitMq");
-                cfg.Host(rabbit["Host"] ?? "localhost", rabbit["VirtualHost"] ?? "/", host =>
+                var port = ushort.TryParse(rabbit["Port"], out var configuredPort) ? configuredPort : (ushort)5672;
+                cfg.Host(rabbit["Host"] ?? "localhost", port, rabbit["VirtualHost"] ?? "/", host =>
                 {
                     host.Username(rabbit["Username"] ?? "guest");
                     host.Password(rabbit["Password"] ?? "guest");

@@ -12,20 +12,26 @@ A small event-driven order platform built to practice **spec-driven development*
 | `features/` | Gherkin: `component/` (Reqnroll) and `e2e/` (playwright-bdd) |
 | `docs/adr/` | Architecture decisions |
 | `src/` | .NET 10 services: Order, Inventory, Payment, Notification |
-| `tests/` | Unit, component and contract tests (.NET) |
+| `tests/` | Unit, component, contract and integration tests (.NET) |
 | `web/` | React + TypeScript UI (types generated from OpenAPI) |
 | `e2e/` | Playwright end-to-end tests |
 
 ## Prerequisites
 
-.NET SDK 10, Node 22, Docker.
+.NET SDK 10, Node 22, Docker. Run `dotnet tool restore` once for `dotnet ef`.
 
 ## Run the tests
 
-.NET unit, component and contract tests (no Docker needed):
+.NET unit, component and contract tests (fast, no Docker needed):
 
 ```bash
-dotnet test OrderFlow.slnx
+dotnet test OrderFlow.slnx --filter "Category!=Integration"
+```
+
+Integration tests against real PostgreSQL and RabbitMQ (Testcontainers starts them; needs Docker):
+
+```bash
+dotnet test OrderFlow.slnx --filter "Category=Integration"
 ```
 
 UI tests:
@@ -62,6 +68,13 @@ cd e2e && npm ci && npx playwright install chromium && npm run wait && npm test
 | Payment | http://localhost:5103 |
 | Notification (fake inbox) | http://localhost:5104 |
 | RabbitMQ management | http://localhost:15672 (guest / guest) |
+| PostgreSQL | localhost:5432 (orderflow / orderflow; databases `orders`, `inventory`) |
+
+Order and Inventory store their state in PostgreSQL under compose (`Persistence__Provider=Postgres`) and in memory otherwise (ADR 0005). After changing an EF model, add a migration:
+
+```bash
+dotnet ef migrations add <Name> -p src/OrderFlow.Order -s src/OrderFlow.Order -o Persistence/Migrations
+```
 
 For UI work, run `npm --prefix web run dev` (http://localhost:5173); it proxies to the services on the ports above.
 

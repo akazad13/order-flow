@@ -4,12 +4,15 @@ using OrderFlow.Inventory.Domain;
 
 namespace OrderFlow.Inventory.Consumers;
 
-public sealed class OrderPlacedConsumer(Catalog catalog, TimeProvider clock) : IConsumer<OrderPlaced>
+public sealed class OrderPlacedConsumer(ICatalogStore catalog, TimeProvider clock) : IConsumer<OrderPlaced>
 {
     public async Task Consume(ConsumeContext<OrderPlaced> context)
     {
         var order = context.Message;
-        var result = catalog.TryReserve(order.OrderId, order.Lines.Select(l => new RequestedLine(l.Sku, l.Quantity)).ToList());
+        var result = await catalog.TryReserveAsync(
+            order.OrderId,
+            order.Lines.Select(l => new RequestedLine(l.Sku, l.Quantity)).ToList(),
+            context.CancellationToken);
 
         switch (result)
         {
@@ -30,5 +33,8 @@ public sealed class OrderPlacedConsumer(Catalog catalog, TimeProvider clock) : I
                     clock.GetUtcNow()));
                 break;
         }
+
+        // The stock change and the announcement commit together (spec 007, R-2).
+        await catalog.SaveChangesAsync(context.CancellationToken);
     }
 }

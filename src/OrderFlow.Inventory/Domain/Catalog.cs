@@ -19,7 +19,7 @@ public abstract record ReservationResult
 /// <summary>
 /// Items, prices, available stock and what each order holds. Thread-safe: one lock
 /// makes a reservation all or nothing across every line (spec 001, R-1) and makes a
-/// release happen at most once (spec 003, R-2). In memory until week 5.
+/// release happen at most once (spec 003, R-2). The in-memory storage mode (ADR 0005).
 /// </summary>
 public sealed class Catalog
 {
@@ -64,33 +64,23 @@ public sealed class Catalog
 
     public ReservationResult TryReserve(Guid orderId, IReadOnlyList<RequestedLine> lines)
     {
-        var merged = lines
-            .GroupBy(l => l.Sku, StringComparer.OrdinalIgnoreCase)
-            .Select(g => new RequestedLine(g.Key, g.Sum(l => l.Quantity)))
-            .ToList();
+        var merged = StockRules.Merge(lines);
 
         lock (_lock)
         {
-            var shortages = merged
-                .Select(l => new Shortage(l.Sku, l.Quantity, _items.GetValueOrDefault(l.Sku)?.Available ?? 0))
-                .Where(s => s.Available < s.Requested)
-                .ToList();
-
-            if (shortages.Count > 0)
+            var result = StockRules.Check(merged, sku => _items.GetValueOrDefault(sku));
+            if (result is ReservationResult.Reserved reserved)
             {
-                return new ReservationResult.Rejected(shortages);
+                foreach (var line in reserved.Lines)
+                {
+                    var item = _items[line.Sku];
+                    _items[line.Sku] = item with { Available = item.Available - line.Quantity };
+                }
+
+                _reservations[orderId] = reserved.Lines;
             }
 
-            var reserved = new List<ReservedLine>(merged.Count);
-            foreach (var line in merged)
-            {
-                var item = _items[line.Sku];
-                _items[line.Sku] = item with { Available = item.Available - line.Quantity };
-                reserved.Add(new ReservedLine(item.Sku, line.Quantity, item.UnitPrice));
-            }
-
-            _reservations[orderId] = reserved;
-            return new ReservationResult.Reserved(reserved, reserved.Sum(l => l.Quantity * l.UnitPrice));
+            return result;
         }
     }
 

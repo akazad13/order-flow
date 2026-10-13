@@ -19,6 +19,7 @@ Each acceptance criterion maps to at least one Gherkin scenario under `features/
 | Unit | `tests/*.UnitTests` | Domain rules |
 | Component | `features/component` + `tests/*.ComponentTests` | One service meets its criteria |
 | Contract | `tests/OrderFlow.ContractTests` | Code matches the contract files |
+| Integration | `tests/*.IntegrationTests` | Storage, outbox and broker behavior on real PostgreSQL and RabbitMQ (Testcontainers) |
 | E2E | `features/e2e` + `e2e/` | A customer journey works on the real stack |
 
 `plan.md` records which layer covers each criterion.
@@ -33,4 +34,4 @@ No fixed sleeps. Async outcomes are awaited with a timeout (test harness, `expec
 
 ## VI. Dependencies
 
-Banned NuGet packages (organization policy): Moq, AutoMapper. Use NSubstitute for test doubles and hand-written mappers (or Mapperly). MassTransit stays on v8 (see `docs/adr/0002`).
+Banned NuGet packages (organization policy): Moq, AutoMapper. Use NSubstitute for test doubles and hand-written mappers (or Mapperly). MassTransit stays on v8 (see `docs/adr/0002`). EF Core packages share one version (pinned in `Directory.Packages.props`).

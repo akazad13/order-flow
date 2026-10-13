@@ -3,7 +3,7 @@ using OrderFlow.OrderService.Domain;
 
 namespace OrderFlow.OrderService.Persistence;
 
-/// <summary>Week 1 only. Replaced by PostgreSQL + outbox in milestone 4 (week 5).</summary>
+/// <summary>Storage for unit and component tests and plain <c>dotnet run</c> (ADR 0005).</summary>
 public sealed class InMemoryOrderRepository : IOrderRepository
 {
     private readonly ConcurrentDictionary<Guid, Order> _orders = new();
@@ -16,4 +16,6 @@ public sealed class InMemoryOrderRepository : IOrderRepository
 
     public Task<Order?> GetAsync(Guid id, CancellationToken cancellationToken) =>
         Task.FromResult(_orders.GetValueOrDefault(id));
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

@@ -11,10 +11,11 @@ public static class StockEndpoints
 
     public static IEndpointRouteBuilder MapStockEndpoints(this IEndpointRouteBuilder app, IConfiguration configuration)
     {
-        app.MapGet("/stock", (Catalog catalog) => Results.Ok(catalog.List())).WithName("listStock");
+        app.MapGet("/stock", async (ICatalogStore catalog, CancellationToken ct) => Results.Ok(await catalog.ListAsync(ct)))
+            .WithName("listStock");
 
-        app.MapGet("/stock/{sku}", (string sku, Catalog catalog) =>
-            catalog.Get(sku) is { } item ? Results.Ok(item) : Results.NotFound()).WithName("getStock");
+        app.MapGet("/stock/{sku}", async (string sku, ICatalogStore catalog, CancellationToken ct) =>
+            await catalog.GetAsync(sku, ct) is { } item ? Results.Ok(item) : Results.NotFound()).WithName("getStock");
 
         // Test-only: lets tests and demos set exact stock levels (spec 001, Q4).
         if (configuration.GetValue<bool>(EnableTestEndpointsKey))
@@ -25,7 +26,7 @@ public static class StockEndpoints
         return app;
     }
 
-    private static IResult SetStock(string sku, SetStockRequest request, Catalog catalog)
+    private static async Task<IResult> SetStock(string sku, SetStockRequest request, ICatalogStore catalog, CancellationToken ct)
     {
         var errors = new Dictionary<string, string[]>();
         if (string.IsNullOrWhiteSpace(request.Name))
@@ -45,6 +46,6 @@ public static class StockEndpoints
 
         return errors.Count > 0
             ? Results.ValidationProblem(errors)
-            : Results.Ok(catalog.Set(sku, request.Name!, request.UnitPrice, request.Available));
+            : Results.Ok(await catalog.SetAsync(sku, request.Name!, request.UnitPrice, request.Available, ct));
     }
 }

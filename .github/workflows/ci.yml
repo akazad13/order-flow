@@ -30,11 +30,30 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-      - run: dotnet test OrderFlow.slnx --logger "trx" --results-directory test-results
+      - run: dotnet test OrderFlow.slnx --filter "Category!=Integration" --logger "trx" --results-directory test-results
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: dotnet-test-results
+          path: test-results
+
+  integration:
+    name: Integration tests (Testcontainers) and migrations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet tool restore
+      # Fails if an EF model changed without a migration (ADR 0005).
+      - run: dotnet ef migrations has-pending-model-changes -p src/OrderFlow.Order -s src/OrderFlow.Order
+      - run: dotnet ef migrations has-pending-model-changes -p src/OrderFlow.Inventory -s src/OrderFlow.Inventory
+      - run: dotnet test OrderFlow.slnx --filter "Category=Integration" --logger "trx" --results-directory test-results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
           path: test-results
 
   web:
@@ -58,7 +77,7 @@ jobs:
 
   e2e:
     name: End-to-end (docker compose + Playwright)
-    needs: [contracts, dotnet, web]
+    needs: [contracts, dotnet, integration, web]
     runs-on: ubuntu-latest
     defaults:
       run:

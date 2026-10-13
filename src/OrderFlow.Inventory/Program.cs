@@ -1,20 +1,81 @@
+using MassTransit;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using OrderFlow.Inventory.Api;
 using OrderFlow.Inventory.Consumers;
 using OrderFlow.Inventory.Domain;
+using OrderFlow.Inventory.Persistence;
 using OrderFlow.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ADR 0005: InMemory for unit/component tests and dotnet run; Postgres for compose and integration tests.
+var usePostgres = builder.Configuration["Persistence:Provider"] == "Postgres";
+
+if (usePostgres)
+{
+    builder.Services.AddDbContext<InventoryDbContext>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("Inventory")));
+    builder.Services.AddScoped<ICatalogStore, EfCatalogStore>();
+}
+else
+{
+    builder.Services.AddSingleton(new Catalog(CatalogSeed.Items));
+    builder.Services.AddScoped<ICatalogStore, InMemoryCatalogStore>();
+}
 
 builder.AddOrderFlowServiceDefaults("inventory", bus =>
 {
     bus.AddConsumer<OrderPlacedConsumer>();
     bus.AddConsumer<OrderCancelledConsumer>();
+
+    if (usePostgres)
+    {
+        bus.AddEntityFrameworkOutbox<InventoryDbContext>(outbox => outbox.UsePostgres());
+
+        // Retry first, then the consumer outbox, so each attempt gets a fresh scope and DbContext.
+        bus.AddConfigureEndpointsCallback((context, _, endpoint) =>
+        {
+            endpoint.UseMessageRetry(retry =>
+            {
+                // Two orders for the same item updated it at once (xmin), or a serialization failure.
+                retry.Handle<DbUpdateConcurrencyException>();
+                retry.Handle<Exception>(IsTransientDatabaseFailure);
+                retry.Intervals(10, 50, 100, 250, 500, 1000, 2000);
+            });
+            endpoint.UseEntityFrameworkOutbox<InventoryDbContext>(context);
+        });
+    }
 });
-builder.Services.AddSingleton(new Catalog(CatalogSeed.Items));
 
 var app = builder.Build();
+
+if (usePostgres)
+{
+    // Safe with one instance per service only (ADR 0005).
+    await using var scope = app.Services.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<InventoryDbContext>();
+    await db.Database.MigrateAsync();
+    if (!await db.StockItems.AnyAsync())
+    {
+        db.StockItems.AddRange(CatalogSeed.Items.Select(i => new StockItemRow { Sku = i.Sku, Name = i.Name, UnitPrice = i.UnitPrice, Available = i.Available }));
+        await db.SaveChangesAsync();
+    }
+}
 
 app.MapOrderFlowDefaults();
 app.MapStockEndpoints(app.Configuration);
 
 app.Run();
+
+static bool IsTransientDatabaseFailure(Exception exception)
+{
+    for (var current = exception; current is not null; current = current.InnerException)
+    {
+        if (current is PostgresException { SqlState: PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.DeadlockDetected })
+        {
+            return true;
+        }
+    }
+
+    return false;
+}

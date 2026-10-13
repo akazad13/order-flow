@@ -31,7 +31,8 @@ public static class OrderEndpoints
         var order = result.Order!;
         await orders.AddAsync(order, cancellationToken);
 
-        // Not atomic with the save: the outbox (week 5) closes that gap.
+        // With Postgres the bus outbox writes OrderPlaced to the same transaction as the order
+        // (spec 007, R-1); SaveChanges commits both, and the outbox delivers it later.
         await publisher.Publish(
             new OrderPlaced(
                 order.Id,
@@ -39,6 +40,7 @@ public static class OrderEndpoints
                 order.Lines.Select(l => new OrderPlacedLine(l.Sku, l.Quantity)).ToList(),
                 order.PlacedAt),
             cancellationToken);
+        await orders.SaveChangesAsync(cancellationToken);
 
         return Results.Created($"/orders/{order.Id}", OrderResponse.From(order));
     }

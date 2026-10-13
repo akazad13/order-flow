@@ -9,10 +9,13 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/OrderFlow.ContractTests/OrderFlow.ContractTests.csproj" />
+    <Project Path="tests/OrderFlow.IntegrationTesting/OrderFlow.IntegrationTesting.csproj" />
     <Project Path="tests/OrderFlow.Inventory.ComponentTests/OrderFlow.Inventory.ComponentTests.csproj" />
+    <Project Path="tests/OrderFlow.Inventory.IntegrationTests/OrderFlow.Inventory.IntegrationTests.csproj" />
     <Project Path="tests/OrderFlow.Inventory.UnitTests/OrderFlow.Inventory.UnitTests.csproj" />
     <Project Path="tests/OrderFlow.Notification.ComponentTests/OrderFlow.Notification.ComponentTests.csproj" />
     <Project Path="tests/OrderFlow.Order.ComponentTests/OrderFlow.Order.ComponentTests.csproj" />
+    <Project Path="tests/OrderFlow.Order.IntegrationTests/OrderFlow.Order.IntegrationTests.csproj" />
     <Project Path="tests/OrderFlow.Order.UnitTests/OrderFlow.Order.UnitTests.csproj" />
     <Project Path="tests/OrderFlow.Payment.ComponentTests/OrderFlow.Payment.ComponentTests.csproj" />
   </Folder>

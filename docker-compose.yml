@@ -9,6 +9,21 @@ x-service: &service
       condition: service_healthy
 
 services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: orderflow
+      POSTGRES_PASSWORD: orderflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "orderflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   rabbitmq:
     image: rabbitmq:4.1-management
     ports:
@@ -25,6 +40,13 @@ services:
     build:
       <<: *service-build
       args: { PROJECT: OrderFlow.Order }
+    environment:
+      RabbitMq__Host: rabbitmq
+      Persistence__Provider: Postgres # ADR 0005
+      ConnectionStrings__Orders: Host=postgres;Database=orders;Username=orderflow;Password=orderflow
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+      postgres: { condition: service_healthy }
     ports: ["5101:8080"]
 
   inventory:
@@ -35,6 +57,11 @@ services:
     environment:
       RabbitMq__Host: rabbitmq
       Inventory__EnableTestEndpoints: "true" # PUT /stock/{sku} for tests and demos (spec 001, Q4)
+      Persistence__Provider: Postgres # ADR 0005
+      ConnectionStrings__Inventory: Host=postgres;Database=inventory;Username=orderflow;Password=orderflow
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+      postgres: { condition: service_healthy }
     ports: ["5102:8080"]
 
   payment:
@@ -58,3 +85,6 @@ services:
     build: ./web
     ports: ["5180:80"]
     depends_on: [order, notification]
+
+volumes:
+  postgres-data:

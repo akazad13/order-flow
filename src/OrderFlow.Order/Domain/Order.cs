@@ -14,6 +14,13 @@ public sealed record Cancellation(string Reason, string Detail);
 
 public sealed class Order
 {
+    // For EF Core (ADR 0005).
+    private Order()
+    {
+        CustomerId = null!;
+        Lines = null!;
+    }
+
     private Order(Guid id, string customerId, IReadOnlyList<OrderLine> lines, DateTimeOffset placedAt)
     {
         Id = id;

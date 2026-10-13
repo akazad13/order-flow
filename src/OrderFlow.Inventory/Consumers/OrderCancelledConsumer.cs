@@ -8,11 +8,11 @@ namespace OrderFlow.Inventory.Consumers;
 /// Puts held stock back on sale (spec 003, AC-3). An order cancelled for a shortage held
 /// nothing, and a repeated cancellation finds nothing left, so both are no-ops (R-1, R-2).
 /// </summary>
-public sealed class OrderCancelledConsumer(Catalog catalog, TimeProvider clock) : IConsumer<OrderCancelled>
+public sealed class OrderCancelledConsumer(ICatalogStore catalog, TimeProvider clock) : IConsumer<OrderCancelled>
 {
     public async Task Consume(ConsumeContext<OrderCancelled> context)
     {
-        var released = catalog.Release(context.Message.OrderId);
+        var released = await catalog.ReleaseAsync(context.Message.OrderId, context.CancellationToken);
         if (released.Count == 0)
         {
             return;
@@ -22,5 +22,8 @@ public sealed class OrderCancelledConsumer(Catalog catalog, TimeProvider clock) 
             context.Message.OrderId,
             released.Select(l => new StockReleasedLine(l.Sku, l.Quantity)).ToList(),
             clock.GetUtcNow()));
+
+        // The release and its announcement commit together (spec 007, R-2).
+        await catalog.SaveChangesAsync(context.CancellationToken);
     }
 }
