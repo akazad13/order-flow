@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OrderFlow Order API
-  version: 0.5.0
+  version: 1.0.0
   description: |
     Customer-facing API for placing, reading and cancelling orders. Specs 000 to 003, 006 and 012.
     Status changes are pushed by the hub in contracts/realtime (spec 005).

@@ -57,6 +57,16 @@ Spec gate: specs, plans, feature files and tests agree, and no banned package is
 npm run check:specs
 ```
 
+Contract gate: no contract change without a new version, and no breaking change without a new major version (spec 014, ADR 0009; needs Docker for oasdiff). It compares the working tree with the last commit; CI compares a pull request with its base branch:
+
+```bash
+npm run check:contracts
+```
+
+```bash
+npm run check:contracts -- --base origin/main
+```
+
 The gate scripts' own tests:
 
 ```bash

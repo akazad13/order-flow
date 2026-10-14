@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OrderFlow Inventory API
-  version: 0.1.0
+  version: 1.0.0
   description: Catalog and stock levels. Spec 001.
   contact:
     name: OrderFlow

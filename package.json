@@ -6,10 +6,13 @@
     "lint:asyncapi": "asyncapi validate contracts/events/asyncapi.yaml && asyncapi validate contracts/realtime/order-updates.asyncapi.yaml",
     "lint:contracts": "npm run lint:openapi && npm run lint:asyncapi",
     "check:specs": "node scripts/check-specs.mjs",
-    "test:scripts": "node --test \"scripts/*.test.mjs\" \"e2e/scripts/*.test.mjs\""
+    "test:scripts": "node --test \"scripts/*.test.mjs\" \"e2e/scripts/*.test.mjs\"",
+    "check:contracts": "node scripts/check-contracts.mjs"
   },
   "devDependencies": {
     "@asyncapi/cli": "^4.1.1",
-    "@stoplight/spectral-cli": "^6.17.0"
+    "@asyncapi/parser": "^3.6.4",
+    "@stoplight/spectral-cli": "^6.17.0",
+    "yaml": "^2.9.1"
   }
 }

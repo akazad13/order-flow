@@ -8,7 +8,7 @@ No production code without a spec under `specs/NNN-name/`. A change in behavior 
 
 ## II. Contracts are code
 
-HTTP APIs are defined in `contracts/http/*.openapi.yaml`; events in `contracts/events/asyncapi.yaml` with one JSON Schema per event. Contracts change in the same PR as the code, and CI lints them and tests the code against them. UI types are generated from the contracts, never written by hand.
+HTTP APIs are defined in `contracts/http/*.openapi.yaml`; events in `contracts/events/asyncapi.yaml` with one JSON Schema per event. Contracts change in the same PR as the code, and CI lints them and tests the code against them. Contracts follow semantic versioning: CI fails a change without a new version, and a breaking change without a new major version (`npm run check:contracts`, ADR 0009). UI types are generated from the contracts, never written by hand.
 
 ## III. Every acceptance criterion is automated
 

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OrderFlow Payment API (test controls)
-  version: 0.1.0
+  version: 1.0.0
   description: Payment has no customer-facing API. This contract only covers the test switches of the fake gateway (specs 003 and 006).
   contact:
     name: OrderFlow

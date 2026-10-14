@@ -15,12 +15,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the contract gate compares with earlier revisions (spec 014)
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run lint:contracts
+      # Spec 014: no breaking contract change without a new major version, no change without a new version.
+      # A pull request is compared with its base branch; a push with the commit before it.
+      - name: Contract compatibility
+        run: npm run check:contracts -- --base "$BASE"
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
       # Spec 009: specs, plans, features and tests agree; no banned packages (AC-1 to AC-5).
       - run: npm run check:specs
       # The gates' own tests (AC-8).
