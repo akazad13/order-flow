@@ -18,7 +18,7 @@ Each acceptance criterion maps to at least one Gherkin scenario under `features/
 | --- | --- | --- |
 | Unit | `tests/*.UnitTests` | Domain rules |
 | Component | `features/component` + `tests/*.ComponentTests` | One service meets its criteria |
-| Contract | `tests/OrderFlow.ContractTests` | Code matches the contract files |
+| Contract | `tests/OrderFlow.ContractTests`, `web/src/api/*.pact.test.ts` + `tests/OrderFlow.Order.PactTests` | Code matches the contract files; the Order API honours what the UI relies on (Pact) |
 | Integration | `tests/*.IntegrationTests` | Storage, outbox and broker behavior on real PostgreSQL and RabbitMQ (Testcontainers) |
 | E2E | `features/e2e` + `e2e/` | A customer journey works on the real stack |
 

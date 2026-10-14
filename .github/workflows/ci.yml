@@ -23,7 +23,7 @@ jobs:
       - run: npm run lint:contracts
 
   dotnet:
-    name: .NET unit, component and contract tests
+    name: .NET unit, component, contract and Pact provider tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -72,7 +72,10 @@ jobs:
       - run: npm ci
       # Fails if the generated API types are stale versus contracts/http.
       - run: npm run gen:api && git diff --exit-code -- src/api
+      # Includes the Pact consumer tests, which rewrite pacts/ (spec 008).
       - run: npm test
+      # Fails if the committed contract is out of date with the web tests (ADR 0006).
+      - run: git diff --exit-code -- ../pacts
       - run: npm run build
 
   e2e:

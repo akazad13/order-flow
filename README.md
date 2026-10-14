@@ -9,6 +9,7 @@ A small event-driven order platform built to practice **spec-driven development*
 | `.specify/` | Constitution (the rules) and spec/plan/tasks templates |
 | `specs/NNN-name/` | One folder per feature: `spec.md`, `plan.md`, `tasks.md` |
 | `contracts/` | OpenAPI (HTTP) and AsyncAPI + JSON Schema (events) |
+| `pacts/` | Consumer-driven contract: what the web UI relies on from the Order API (Pact, ADR 0006) |
 | `features/` | Gherkin: `component/` (Reqnroll) and `e2e/` (playwright-bdd) |
 | `docs/adr/` | Architecture decisions |
 | `src/` | .NET 10 services: Order, Inventory, Payment, Notification |
@@ -34,11 +35,13 @@ Integration tests against real PostgreSQL and RabbitMQ (Testcontainers starts th
 dotnet test OrderFlow.slnx --filter "Category=Integration"
 ```
 
-UI tests:
+UI tests, including the Pact consumer tests that rewrite `pacts/` (commit the change):
 
 ```bash
 npm --prefix web ci && npm --prefix web test
 ```
+
+The Order API verifies `pacts/` in `tests/OrderFlow.Order.PactTests`, part of the fast .NET run above.
 
 Contract lint (OpenAPI with Spectral, AsyncAPI with the AsyncAPI CLI):
 

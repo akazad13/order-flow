@@ -1,0 +1,524 @@
+{
+  "consumer": {
+    "name": "orderflow-web"
+  },
+  "interactions": [
+    {
+      "description": "a request for a cancelled order",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "an order cancelled for a shortage exists"
+        }
+      ],
+      "request": {
+        "generators": {
+          "path": {
+            "expression": "/orders/${orderId}",
+            "type": "ProviderState"
+          }
+        },
+        "matchingRules": {
+          "path": {
+            "combine": "AND",
+            "matchers": [
+              {
+                "match": "type"
+              }
+            ]
+          }
+        },
+        "method": "GET",
+        "path": "/orders/8f6c1d1e-6f0b-4c64-9d7e-0a8f6b1b2c3d"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "cancellation": {
+              "detail": "Only 1 of SKU-002 available, 2 requested.",
+              "reason": "OutOfStock"
+            },
+            "orderId": "8f6c1d1e-6f0b-4c64-9d7e-0a8f6b1b2c3d",
+            "status": "Cancelled"
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json; charset=utf-8"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.cancellation.detail": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.orderId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                }
+              ]
+            }
+          },
+          "header": {
+            "Content-Type": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^application/json(;.*)?$"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "a request for a confirmed order",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "a confirmed order exists",
+          "params": {
+            "total": 37
+          }
+        }
+      ],
+      "request": {
+        "generators": {
+          "path": {
+            "expression": "/orders/${orderId}",
+            "type": "ProviderState"
+          }
+        },
+        "matchingRules": {
+          "path": {
+            "combine": "AND",
+            "matchers": [
+              {
+                "match": "type"
+              }
+            ]
+          }
+        },
+        "method": "GET",
+        "path": "/orders/8f6c1d1e-6f0b-4c64-9d7e-0a8f6b1b2c3d"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "cancellation": null,
+            "orderId": "8f6c1d1e-6f0b-4c64-9d7e-0a8f6b1b2c3d",
+            "status": "Confirmed",
+            "total": 37
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json; charset=utf-8"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.orderId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                }
+              ]
+            },
+            "$.total": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "decimal"
+                }
+              ]
+            }
+          },
+          "header": {
+            "Content-Type": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^application/json(;.*)?$"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "a request for a pending order",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "a pending order exists"
+        }
+      ],
+      "request": {
+        "generators": {
+          "path": {
+            "expression": "/orders/${orderId}",
+            "type": "ProviderState"
+          }
+        },
+        "matchingRules": {
+          "path": {
+            "combine": "AND",
+            "matchers": [
+              {
+                "match": "type"
+              }
+            ]
+          }
+        },
+        "method": "GET",
+        "path": "/orders/8f6c1d1e-6f0b-4c64-9d7e-0a8f6b1b2c3d"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "cancellation": null,
+            "customerId": "customer-1",
+            "lines": [
+              {
+                "quantity": 2,
+                "sku": "SKU-001"
+              }
+            ],
+            "orderId": "8f6c1d1e-6f0b-4c64-9d7e-0a8f6b1b2c3d",
+            "placedAt": "2026-10-14T10:00:00.0000000+00:00",
+            "status": "Pending",
+            "total": null
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json; charset=utf-8"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.customerId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.lines": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.lines[*].quantity": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.lines[*].sku": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.orderId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                }
+              ]
+            },
+            "$.placedAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+                }
+              ]
+            }
+          },
+          "header": {
+            "Content-Type": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^application/json(;.*)?$"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "a request for an order that does not exist",
+      "pending": false,
+      "request": {
+        "method": "GET",
+        "path": "/orders/00000000-0000-0000-0000-000000000000"
+      },
+      "response": {
+        "status": 404
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "a request to place a valid order",
+      "pending": false,
+      "request": {
+        "body": {
+          "content": {
+            "customerId": "customer-1",
+            "lines": [
+              {
+                "quantity": 2,
+                "sku": "SKU-001"
+              }
+            ]
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "method": "POST",
+        "path": "/orders"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "cancellation": null,
+            "customerId": "customer-1",
+            "lines": [
+              {
+                "quantity": 2,
+                "sku": "SKU-001"
+              }
+            ],
+            "orderId": "8f6c1d1e-6f0b-4c64-9d7e-0a8f6b1b2c3d",
+            "placedAt": "2026-10-14T10:00:00.0000000+00:00",
+            "status": "Pending",
+            "total": null
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json; charset=utf-8"
+          ],
+          "Location": [
+            "/orders/8f6c1d1e-6f0b-4c64-9d7e-0a8f6b1b2c3d"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.lines": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.lines[*].quantity": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.lines[*].sku": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.orderId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                }
+              ]
+            },
+            "$.placedAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+                }
+              ]
+            }
+          },
+          "header": {
+            "Content-Type": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^application/json(;.*)?$"
+                }
+              ]
+            },
+            "Location": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^/orders/[0-9a-f-]{36}$"
+                }
+              ]
+            }
+          }
+        },
+        "status": 201
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "a request to place an order with a zero quantity",
+      "pending": false,
+      "request": {
+        "body": {
+          "content": {
+            "customerId": "customer-1",
+            "lines": [
+              {
+                "quantity": 0,
+                "sku": "SKU-001"
+              }
+            ]
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "method": "POST",
+        "path": "/orders"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "errors": {
+              "lines[0].quantity": [
+                "Quantity must be at least 1."
+              ]
+            },
+            "status": 400,
+            "title": "One or more validation errors occurred."
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/problem+json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.errors['lines[0].quantity']": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.title": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          },
+          "header": {
+            "Content-Type": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^application/problem\\+json(;.*)?$"
+                }
+              ]
+            }
+          }
+        },
+        "status": 400
+      },
+      "type": "Synchronous/HTTP"
+    }
+  ],
+  "metadata": {
+    "pact-js": {
+      "version": "17.1.4"
+    },
+    "pactRust": {
+      "ffi": "0.5.8",
+      "models": "1.3.16"
+    },
+    "pactSpecification": {
+      "version": "4.0"
+    }
+  },
+  "provider": {
+    "name": "orderflow-order-api"
+  }
+}

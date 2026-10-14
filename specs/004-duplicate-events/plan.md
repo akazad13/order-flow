@@ -35,7 +35,7 @@ None. Behavior only.
 | AC-3 Decisions stick | x | x | | `CatalogTests`; `duplicate-order-placed.feature` (after rejection, after release) |
 | AC-4 Order moves once | | x | | `duplicate-order-events.feature` (after confirm, after cancel) |
 | AC-5 Told once | | x | | `duplicate-notification.feature` (no Notification unit-test project; the inbox is a few lines) |
-| AC-6 Simultaneous repeats | | | x | `InventoryServiceTests.Two_copies_at_once_hold_once` |
+| AC-6 Simultaneous repeats | | | x | `InventoryServiceTests.Two_copies_of_one_order_at_once_hold_once` |
 
 ## Constitution check
 
