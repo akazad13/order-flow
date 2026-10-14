@@ -24,6 +24,7 @@
     <ReqnrollFeatureFiles Include="..\..\features\component\duplicate-order-events.feature" Link="Features\duplicate-order-events.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\live-order-updates.feature" Link="Features\live-order-updates.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\customer-cancel.feature" Link="Features\customer-cancel.feature" />
+    <ReqnrollFeatureFiles Include="..\..\features\component\order-access.feature" Link="Features\order-access.feature" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,6 +33,11 @@
 
   <ItemGroup>
     <Compile Include="..\Shared\Eventually.cs" Link="Support\Eventually.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\TestTokens.cs" Link="Support\TestTokens.cs" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
   </ItemGroup>
 
 </Project>

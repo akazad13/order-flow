@@ -8,6 +8,7 @@ using OrderFlow.Contracts.Events;
 using OrderFlow.OrderService.Api;
 using OrderFlow.OrderService.ComponentTests.Support;
 using OrderFlow.Testing;
+using Microsoft.AspNetCore.SignalR;
 using Reqnroll;
 using Shouldly;
 
@@ -30,26 +31,59 @@ public sealed class LiveUpdateSteps(OrderServiceFactory service, OrderLifecycleS
     [Given("a client is watching that order")]
     public async Task GivenAClientIsWatchingThatOrder()
     {
-        var server = service.Server;
-        _connection = new HubConnectionBuilder()
-            .WithUrl(new Uri(server.BaseAddress, "hubs/orders"), options =>
-            {
-                options.Transports = HttpTransportType.WebSockets;
-                options.SkipNegotiation = true;
-                options.WebSocketFactory = async (context, cancellationToken) =>
-                    await server.CreateWebSocketClient().ConnectAsync(context.Uri, cancellationToken);
-            })
-            .Build();
-
+        _connection = Connect(TestTokens.For(lifecycle.Placed.CustomerId));
         _connection.On<JsonElement>("OrderUpdated", update => _updates.Writer.TryWrite(update));
         await _connection.StartAsync();
         await _connection.InvokeAsync("WatchOrder", lifecycle.Placed.OrderId);
     }
 
+    [Then("a client that is not logged in cannot connect")]
+    public async Task ThenAClientThatIsNotLoggedInCannotConnect()
+    {
+        // Spec 012, AC-1.
+        await using var anonymous = Connect(token: null);
+        var refused = await Should.ThrowAsync<Exception>(anonymous.StartAsync());
+        refused.ToString().ShouldContain("401");
+    }
+
+    [Then("customer {string} cannot watch that order")]
+    public async Task ThenCustomerCannotWatchThatOrder(string customerId)
+    {
+        // Spec 012, AC-3: refused exactly as for an order that does not exist.
+        await using var other = Connect(TestTokens.For(customerId));
+        await other.StartAsync();
+
+        var refused = await Should.ThrowAsync<HubException>(other.InvokeAsync("WatchOrder", lifecycle.Placed.OrderId));
+        var unknown = await Should.ThrowAsync<HubException>(other.InvokeAsync("WatchOrder", Guid.NewGuid()));
+        refused.Message.ShouldContain("Order not found.");
+        refused.Message.ShouldBe(unknown.Message);
+    }
+
+    /// <summary>A real SignalR client over WebSockets on the test server; the token goes in the query string, as in the browser.</summary>
+    private HubConnection Connect(string? token)
+    {
+        var server = service.Server;
+        return new HubConnectionBuilder()
+            .WithUrl(new Uri(server.BaseAddress, "hubs/orders"), options =>
+            {
+                options.Transports = HttpTransportType.WebSockets;
+                options.SkipNegotiation = true;
+
+                // As a browser does: a WebSocket cannot carry an Authorization header, so the token
+                // travels as ?access_token= (the .NET client leaves that to a custom factory).
+                options.WebSocketFactory = async (context, cancellationToken) =>
+                {
+                    var uri = token is null ? context.Uri : new Uri($"{context.Uri}{(context.Uri.Query.Length > 0 ? "&" : "?")}access_token={token}");
+                    return await server.CreateWebSocketClient().ConnectAsync(uri, cancellationToken);
+                };
+            })
+            .Build();
+    }
+
     [Given("customer {string} has placed another order for {int} x {string}")]
     public async Task GivenAnotherOrder(string customerId, int quantity, string sku)
     {
-        var response = await service.CreateClient().PostAsJsonAsync("/orders", new PlaceOrderRequest(customerId, [new OrderLineDto(sku, quantity)]));
+        var response = await service.ClientFor(customerId).PostAsJsonAsync("/orders", new PlaceOrderRequest([new OrderLineDto(sku, quantity)]));
         response.EnsureSuccessStatusCode();
         _other = await response.Content.ReadFromJsonAsync<OrderResponse>();
     }
@@ -87,7 +121,7 @@ public sealed class LiveUpdateSteps(OrderServiceFactory service, OrderLifecycleS
     [Then("the update is exactly what reading the order returns")]
     public async Task ThenTheUpdateIsWhatReadingReturns()
     {
-        var read = await service.CreateClient().GetFromJsonAsync<JsonElement>($"/orders/{lifecycle.Placed.OrderId}");
+        var read = await service.ClientFor(lifecycle.Placed.CustomerId).GetFromJsonAsync<JsonElement>($"/orders/{lifecycle.Placed.OrderId}");
 
         JsonElement.DeepEquals(_lastUpdate, read).ShouldBeTrue($"pushed {_lastUpdate} but read {read}");
     }

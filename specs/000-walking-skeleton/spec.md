@@ -16,7 +16,7 @@ Before building real features we need proof that every moving part is wired toge
 ## Acceptance criteria
 
 - **AC-1** Given a customer ID and at least one line with a SKU and a quantity of 1 or more, when the customer places the order, then it is accepted with status Pending and an OrderPlaced event is published for it.
-- **AC-2** Given an order with a missing customer ID, no lines, a blank SKU or a quantity below 1, when it is placed, then it is rejected with one error per invalid field and no event is published.
+- **AC-2** Given an order with a missing customer ID, no lines, a blank SKU or a quantity below 1, when it is placed, then it is rejected with one error per invalid field and no event is published. (Amended by [spec 012](../012-login-and-ownership/spec.md): the customer now comes from the login, so a request can no longer leave it out.)
 - **AC-3** Given an OrderPlaced event, when the Notification service receives it, then the customer's inbox contains "We received your order".
 - **AC-4** Given the full stack is running, when a customer places an order in the UI, then they see the order and, shortly after, "We received your order" in their inbox. *(Amended by spec 001: the order may already show Confirmed, so the UI status is no longer asserted here; spec 001 AC-5 covers it.)*
 

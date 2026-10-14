@@ -18,7 +18,23 @@
             "type": "ProviderState"
           }
         },
+        "headers": {
+          "Authorization": [
+            "Bearer a-test-access-token"
+          ]
+        },
         "matchingRules": {
+          "header": {
+            "Authorization": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^Bearer .+$"
+                }
+              ]
+            }
+          },
           "path": {
             "combine": "AND",
             "matchers": [
@@ -103,7 +119,23 @@
             "type": "ProviderState"
           }
         },
+        "headers": {
+          "Authorization": [
+            "Bearer a-test-access-token"
+          ]
+        },
         "matchingRules": {
+          "header": {
+            "Authorization": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^Bearer .+$"
+                }
+              ]
+            }
+          },
           "path": {
             "combine": "AND",
             "matchers": [
@@ -183,7 +215,23 @@
             "type": "ProviderState"
           }
         },
+        "headers": {
+          "Authorization": [
+            "Bearer a-test-access-token"
+          ]
+        },
         "matchingRules": {
+          "header": {
+            "Authorization": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^Bearer .+$"
+                }
+              ]
+            }
+          },
           "path": {
             "combine": "AND",
             "matchers": [
@@ -294,6 +342,24 @@
       "description": "a request for an order that does not exist",
       "pending": false,
       "request": {
+        "headers": {
+          "Authorization": [
+            "Bearer a-test-access-token"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "Authorization": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^Bearer .+$"
+                }
+              ]
+            }
+          }
+        },
         "method": "GET",
         "path": "/orders/00000000-0000-0000-0000-000000000000"
       },
@@ -320,7 +386,23 @@
             "type": "ProviderState"
           }
         },
+        "headers": {
+          "Authorization": [
+            "Bearer a-test-access-token"
+          ]
+        },
         "matchingRules": {
+          "header": {
+            "Authorization": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^Bearer .+$"
+                }
+              ]
+            }
+          },
           "path": {
             "combine": "AND",
             "matchers": [
@@ -353,7 +435,23 @@
             "type": "ProviderState"
           }
         },
+        "headers": {
+          "Authorization": [
+            "Bearer a-test-access-token"
+          ]
+        },
         "matchingRules": {
+          "header": {
+            "Authorization": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^Bearer .+$"
+                }
+              ]
+            }
+          },
           "path": {
             "combine": "AND",
             "matchers": [
@@ -377,7 +475,6 @@
       "request": {
         "body": {
           "content": {
-            "customerId": "customer-1",
             "lines": [
               {
                 "quantity": 2,
@@ -389,9 +486,25 @@
           "encoded": false
         },
         "headers": {
+          "Authorization": [
+            "Bearer a-test-access-token"
+          ],
           "Content-Type": [
             "application/json"
           ]
+        },
+        "matchingRules": {
+          "header": {
+            "Authorization": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^Bearer .+$"
+                }
+              ]
+            }
+          }
         },
         "method": "POST",
         "path": "/orders"
@@ -425,6 +538,14 @@
         },
         "matchingRules": {
           "body": {
+            "$.customerId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
             "$.lines": {
               "combine": "AND",
               "matchers": [
@@ -500,7 +621,6 @@
       "request": {
         "body": {
           "content": {
-            "customerId": "customer-1",
             "lines": [
               {
                 "quantity": 0,
@@ -512,9 +632,25 @@
           "encoded": false
         },
         "headers": {
+          "Authorization": [
+            "Bearer a-test-access-token"
+          ],
           "Content-Type": [
             "application/json"
           ]
+        },
+        "matchingRules": {
+          "header": {
+            "Authorization": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^Bearer .+$"
+                }
+              ]
+            }
+          }
         },
         "method": "POST",
         "path": "/orders"

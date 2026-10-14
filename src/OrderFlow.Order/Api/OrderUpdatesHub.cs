@@ -1,4 +1,5 @@
 using MassTransit;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using OrderFlow.Contracts.Events;
 using OrderFlow.OrderService.Persistence;
@@ -14,12 +15,23 @@ public interface IOrderUpdatesClient
 /// <summary>
 /// Live order status (spec 005). A client joins one group per watched order. Changes made
 /// before it joined are not replayed: the client reads the order once after joining (AC-3).
+/// Connecting needs a login, and only the order's customer may watch it (spec 012).
 /// </summary>
-public sealed class OrderUpdatesHub : Hub<IOrderUpdatesClient>
+[Authorize]
+public sealed class OrderUpdatesHub(IOrderRepository orders) : Hub<IOrderUpdatesClient>
 {
     public const string Path = "/hubs/orders";
 
-    public Task WatchOrder(Guid orderId) => Groups.AddToGroupAsync(Context.ConnectionId, GroupFor(orderId));
+    public async Task WatchOrder(Guid orderId)
+    {
+        // Someone else's order is refused exactly like an unknown one (spec 012, R-2).
+        if (await orders.FindOwnAsync(orderId, Context.User!, Context.ConnectionAborted) is null)
+        {
+            throw new HubException("Order not found.");
+        }
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, GroupFor(orderId));
+    }
 
     internal static string GroupFor(Guid orderId) => $"order-{orderId}";
 }

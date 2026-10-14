@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using OrderFlow.Contracts.Events;
 using OrderFlow.IntegrationTesting;
+using OrderFlow.Testing;
 using OrderFlow.Notification.Inbox;
 
 namespace OrderFlow.Notification.IntegrationTests;
@@ -100,7 +101,7 @@ public sealed class NotificationServiceTests(InfrastructureFixture infrastructur
         new(Guid.NewGuid(), customerId, [new OrderPlacedLine("ITEM-1", 1)], DateTimeOffset.UtcNow);
 
     private static async Task<List<InboxMessage>> Inbox(HttpClient client, string customerId) =>
-        (await client.GetFromJsonAsync<List<InboxMessage>>($"/inbox/{customerId}"))!;
+        (await client.LoggedInAs(customerId).GetFromJsonAsync<List<InboxMessage>>($"/inbox/{customerId}"))!;
 
     private async Task<Dictionary<string, string?>> SettingsAsync()
     {

@@ -22,7 +22,7 @@ public sealed class CustomerCancelSteps(OrderServiceFactory service, OrderLifecy
 
     [When("the customer asks to cancel that order")]
     public async Task WhenTheCustomerAsksToCancel() =>
-        _response = await service.CreateClient().PostAsync($"/orders/{lifecycle.Placed.OrderId}/cancellation", null);
+        _response = await service.ClientFor(lifecycle.Placed.CustomerId).PostAsync($"/orders/{lifecycle.Placed.OrderId}/cancellation", null);
 
     [When("the customer has cancelled that order")]
     public async Task WhenTheCustomerHasCancelled()
@@ -34,7 +34,7 @@ public sealed class CustomerCancelSteps(OrderServiceFactory service, OrderLifecy
 
     [When("the customer asks to cancel an order that does not exist")]
     public async Task WhenTheCustomerAsksToCancelAnUnknownOrder() =>
-        _response = await service.CreateClient().PostAsync($"/orders/{Guid.NewGuid()}/cancellation", null);
+        _response = await service.ClientFor("customer-1").PostAsync($"/orders/{Guid.NewGuid()}/cancellation", null);
 
     [When("the order placement is processed")]
     public async Task WhenTheOrderPlacementIsProcessed()

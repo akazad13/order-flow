@@ -1,4 +1,4 @@
-# Spec: specs/005-live-order-status/spec.md (AC-1, AC-2)
+# Spec: specs/005-live-order-status/spec.md (AC-1, AC-2), specs/012-login-and-ownership/spec.md (AC-1, AC-3)
 # Runs in: tests/OrderFlow.Order.ComponentTests (Order service + SignalR hub over the test server + in-memory bus)
 @component @spec-005
 Feature: Live order updates (Order service)
@@ -27,3 +27,11 @@ Feature: Live order updates (Order service)
     And payment succeeds for that order
     Then the client is sent that order with status "Confirmed"
     And the client was sent nothing else
+
+  @spec-012
+  Scenario: Watching needs a login
+    Then a client that is not logged in cannot connect
+
+  @spec-012
+  Scenario: Nobody else can watch the order
+    Then customer "mallory" cannot watch that order

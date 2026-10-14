@@ -18,4 +18,9 @@
     <ProjectReference Include="..\..\src\OrderFlow.Contracts\OrderFlow.Contracts.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\Shared\TestTokens.cs" Link="Support\TestTokens.cs" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+  </ItemGroup>
+
 </Project>

@@ -7,7 +7,8 @@ public sealed record OrderLineDto(string Sku, int Quantity);
 
 public sealed record CancellationDto(string Reason, string Detail);
 
-public sealed record PlaceOrderRequest(string? CustomerId, IReadOnlyList<OrderLineDto>? Lines);
+/// <summary>The customer is the logged-in one (spec 012, R-1); the request cannot name another.</summary>
+public sealed record PlaceOrderRequest(IReadOnlyList<OrderLineDto>? Lines);
 
 public sealed record OrderResponse(
     Guid OrderId,

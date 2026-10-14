@@ -3,6 +3,7 @@ using MassTransit.Testing;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using OrderFlow.Testing;
 
 namespace OrderFlow.OrderService.ComponentTests.Support;
 
@@ -14,8 +15,11 @@ public sealed class OrderServiceFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
     {
-        builder.ConfigureTestServices(services => services.AddMassTransitTestHarness());
+        builder.ConfigureTestServices(services => services.AddMassTransitTestHarness().TrustTestTokens());
     }
 
     public ITestHarness Harness => Services.GetTestHarness();
+
+    /// <summary>An API client logged in as the customer (spec 012).</summary>
+    public HttpClient ClientFor(string customerId) => CreateClient().LoggedInAs(customerId);
 }

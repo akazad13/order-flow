@@ -100,7 +100,7 @@ public sealed class InboxSteps(NotificationServiceFactory service)
     [Then("the inbox of {string} lists, in order:")]
     public async Task ThenTheInboxListsInOrder(string customerId, DataTable table)
     {
-        var inbox = await service.CreateClient().GetFromJsonAsync<List<InboxMessage>>($"/inbox/{customerId}");
+        var inbox = await service.ClientFor(customerId).GetFromJsonAsync<List<InboxMessage>>($"/inbox/{customerId}");
 
         inbox!.Select(m => m.Text).ShouldBe(table.Rows.Select(r => r["message"]));
     }
@@ -108,7 +108,7 @@ public sealed class InboxSteps(NotificationServiceFactory service)
     [Then("the inbox of {string} contains {string}")]
     public async Task ThenTheInboxContains(string customerId, string text)
     {
-        var inbox = await service.CreateClient().GetFromJsonAsync<List<InboxMessage>>($"/inbox/{customerId}");
+        var inbox = await service.ClientFor(customerId).GetFromJsonAsync<List<InboxMessage>>($"/inbox/{customerId}");
 
         inbox!.ShouldContain(m => m.Text == text);
     }

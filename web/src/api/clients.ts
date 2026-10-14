@@ -1,4 +1,5 @@
-import createClient from 'openapi-fetch';
+import createClient, { type Middleware } from 'openapi-fetch';
+import { accessToken } from '../auth';
 import type { components as OrderComponents, paths as OrderPaths } from './order-api';
 import type { components as NotificationComponents, paths as NotificationPaths } from './notification-api';
 
@@ -19,17 +20,30 @@ export type CancelOrderResult =
   | { outcome: 'too-late' }
   | { outcome: 'not-found' };
 
+/** Sends the logged-in customer's access token (spec 012). */
+function bearer(token: () => string | null): Middleware {
+  return {
+    onRequest({ request }) {
+      const value = token();
+      if (value) request.headers.set('Authorization', `Bearer ${value}`);
+      return request;
+    },
+  };
+}
+
 /**
  * The UI's Order API client. A factory so the Pact consumer test (spec 008) can point the
- * exact code the app uses at Pact's mock server.
+ * exact code the app uses at Pact's mock server, with a token of its own.
  */
-export function createOrderApi(baseUrl: string) {
+export function createOrderApi(baseUrl: string, token: () => string | null = accessToken) {
   const client = createClient<OrderPaths>({ baseUrl });
+  client.use(bearer(token));
 
   return {
-    async placeOrder(customerId: string, sku: string, quantity: number): Promise<PlaceOrderResult> {
+    async placeOrder(sku: string, quantity: number): Promise<PlaceOrderResult> {
+      // The customer is the logged-in one (spec 012, R-1).
       const { data, error } = await client.POST('/orders', {
-        body: { customerId, lines: [{ sku, quantity }] },
+        body: { lines: [{ sku, quantity }] },
       });
       if (data) {
         return { ok: true, order: data };
@@ -64,9 +78,10 @@ export function createOrderApi(baseUrl: string) {
 
 const orderApi = createOrderApi('/order-api');
 const notificationApi = createClient<NotificationPaths>({ baseUrl: '/notification-api' });
+notificationApi.use(bearer(accessToken));
 
-export function placeOrder(customerId: string, sku: string, quantity: number): Promise<PlaceOrderResult> {
-  return orderApi.placeOrder(customerId, sku, quantity);
+export function placeOrder(sku: string, quantity: number): Promise<PlaceOrderResult> {
+  return orderApi.placeOrder(sku, quantity);
 }
 
 export function cancelOrder(orderId: string): Promise<CancelOrderResult> {

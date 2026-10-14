@@ -1,4 +1,5 @@
 import { HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
+import { accessToken } from '../auth';
 import type { Order } from './clients';
 
 /**
@@ -10,7 +11,7 @@ import type { Order } from './clients';
  */
 export function watchOrder(orderId: string, onUpdate: (order: Order) => void, onWatching: () => void): () => void {
   const connection = new HubConnectionBuilder()
-    .withUrl('/order-api/hubs/orders')
+    .withUrl('/order-api/hubs/orders', { accessTokenFactory: () => accessToken() ?? '' })
     .withAutomaticReconnect()
     .configureLogging(LogLevel.Warning)
     .build();

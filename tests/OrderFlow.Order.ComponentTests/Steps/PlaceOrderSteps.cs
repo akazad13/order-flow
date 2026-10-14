@@ -19,8 +19,7 @@ public sealed class PlaceOrderSteps(OrderServiceFactory service)
     [When("customer {string} places an order for {int} x {string}")]
     public async Task WhenCustomerPlacesAnOrder(string customerId, int quantity, string sku)
     {
-        var client = service.CreateClient();
-        _response = await client.PostAsJsonAsync("/orders", new PlaceOrderRequest(customerId, [new OrderLineDto(sku, quantity)]));
+        _response = await service.ClientFor(customerId).PostAsJsonAsync("/orders", new PlaceOrderRequest([new OrderLineDto(sku, quantity)]));
     }
 
     [Then("the order is accepted with status {string}")]
@@ -30,6 +29,15 @@ public sealed class PlaceOrderSteps(OrderServiceFactory service)
         _order = await _response.Content.ReadFromJsonAsync<OrderResponse>();
         _order!.Status.ShouldBe(status);
         _response.Headers.Location!.ToString().ShouldBe($"/orders/{_order.OrderId}");
+    }
+
+    [Then("the order is recorded for customer {string}")]
+    public async Task ThenTheOrderIsRecordedFor(string customerId)
+    {
+        // Spec 012, AC-2: the customer comes from the login, and only they can read it back.
+        _order!.CustomerId.ShouldBe(customerId);
+        var read = await service.ClientFor(customerId).GetFromJsonAsync<OrderResponse>($"/orders/{_order.OrderId}");
+        read!.CustomerId.ShouldBe(customerId);
     }
 
     [Then("an OrderPlaced event is published for that order")]

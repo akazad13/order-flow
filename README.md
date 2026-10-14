@@ -87,7 +87,8 @@ A nightly workflow (`.github/workflows/nightly.yml`) repeats E2E ten times and r
 
 | Service | URL |
 | --- | --- |
-| Web UI | http://localhost:5180 |
+| Web UI | http://localhost:5180 (log in as `alice` / `alice`, a demo user from the realm file) |
+| Keycloak (logins, spec 012) | http://localhost:8180 (admin console: admin / admin; realm `orderflow`) |
 | Order API | http://localhost:5101 |
 | Inventory (`GET /stock`; `PUT /stock/{sku}` for tests) | http://localhost:5102 |
 | Payment | http://localhost:5103 |
@@ -102,6 +103,8 @@ dotnet ef migrations add <Name> -p src/OrderFlow.Order -s src/OrderFlow.Order -o
 ```
 
 For UI work, run `npm --prefix web run dev` (http://localhost:5173); it proxies to the services on the ports above.
+
+Customers log in through Keycloak (spec 012, ADR 0008); the realm, its web client and the demo user are in `deploy/keycloak/orderflow-realm.json`. The Order and Notification APIs and the live-updates hub need a login; tests below E2E use tokens signed by a test-only key (`tests/Shared/TestTokens.cs`), and each E2E scenario creates its own Keycloak user.
 
 ## Working on a feature
 

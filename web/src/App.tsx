@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { cancelOrder, getInbox, getOrder, placeOrder, type InboxMessage, type Order } from './api/clients';
 import { watchOrder } from './api/live';
+import { currentCustomer, logIn, logOut, type Customer } from './auth';
 
 // The inbox is still polled; order status is pushed (spec 005).
 export const POLL_MS = 1000;
@@ -21,7 +22,8 @@ const CANCELLATION_TEXT: Record<NonNullable<Order['cancellation']>['reason'], st
 type CancelState = 'idle' | 'cancelling' | 'too-late';
 
 export function App() {
-  const [customerId, setCustomerId] = useState('customer-1');
+  // Spec 012: undefined while the login is checked, null when nobody is logged in.
+  const [customer, setCustomer] = useState<Customer | null | undefined>(undefined);
   const [sku, setSku] = useState('SKU-001');
   const [quantity, setQuantity] = useState(1);
   const [order, setOrder] = useState<Order | null>(null);
@@ -30,6 +32,16 @@ export function App() {
   const [cancelState, setCancelState] = useState<CancelState>('idle');
   // True once the page has joined the order's live updates (spec 005); E2E waits on it.
   const [watching, setWatching] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    currentCustomer()
+      .then((found) => active && setCustomer(found))
+      .catch(() => active && setCustomer(null));
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const orderId = order?.orderId;
   const orderCustomerId = order?.customerId;
@@ -76,7 +88,7 @@ export function App() {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setErrors([]);
-    const result = await placeOrder(customerId, sku, quantity);
+    const result = await placeOrder(sku, quantity);
     setCancelState('idle');
     if (result.ok) {
       setOrder(result.order);
@@ -102,11 +114,20 @@ export function App() {
     <main>
       <h1>OrderFlow</h1>
 
+      {customer === null && (
+        <p>
+          Log in to place and follow your orders. <button type="button" onClick={() => void logIn()}>Log in</button>
+        </p>
+      )}
+
+      {customer && (
+        <p>
+          Logged in as {customer.name} <button type="button" onClick={() => void logOut()}>Log out</button>
+        </p>
+      )}
+
+      {customer && (
       <form onSubmit={handleSubmit}>
-        <label>
-          Customer ID
-          <input value={customerId} onChange={(e) => setCustomerId(e.target.value)} />
-        </label>
         <label>
           SKU
           <input value={sku} onChange={(e) => setSku(e.target.value)} />
@@ -117,6 +138,7 @@ export function App() {
         </label>
         <button type="submit">Place order</button>
       </form>
+      )}
 
       {errors.length > 0 && (
         <ul role="alert">

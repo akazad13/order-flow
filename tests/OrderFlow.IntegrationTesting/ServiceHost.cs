@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using OrderFlow.Testing;
 
 namespace OrderFlow.IntegrationTesting;
 
@@ -16,6 +18,9 @@ public sealed class ServiceHost<TProgram>(IReadOnlyDictionary<string, string?> s
         {
             builder.UseSetting(key, value);
         }
+
+        // Logins signed by the test key (spec 012, ADR 0008); harmless for services without logins.
+        builder.ConfigureTestServices(services => services.TrustTestTokens());
     }
 
     /// <summary>Starts the host and waits until its health check (including the bus) is healthy.</summary>

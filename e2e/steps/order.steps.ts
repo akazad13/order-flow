@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect } from '@playwright/test';
-import { Given, Then, When, inventoryUrl, paymentUrl } from './fixtures';
+import { Given, Then, When, createCustomer, inventoryUrl, logIn, paymentUrl } from './fixtures';
 
 // The flow is asynchronous (broker in the middle): rely on Playwright's
 // auto-retrying expect with a timeout, never on fixed sleeps.
@@ -14,7 +14,8 @@ Given('an item priced {float} with {int} in stock', async ({ request, scenario }
   expect(response.ok()).toBeTruthy();
 });
 
-Given('a new customer is on the order page', async ({ page, scenario }) => {
+Given('a new customer is on the order page', async ({ page, request, scenario }) => {
+  await createCustomer(request, scenario);
   page.on('request', (request) => {
     if (request.method() === 'GET' && /\/order-api\/orders\/[0-9a-f-]{36}$/.test(request.url())) {
       scenario.orderReads.push(request.url());
@@ -26,7 +27,31 @@ Given('a new customer is on the order page', async ({ page, scenario }) => {
     }
   });
   await page.goto('/');
-  await page.getByLabel('Customer ID').fill(scenario.customerId);
+  await logIn(page, scenario);
+});
+
+Given('a visitor is on the order page', async ({ page }) => {
+  await page.goto('/');
+});
+
+Then('they are asked to log in and see no order form', async ({ page }) => {
+  await expect(page.getByRole('button', { name: 'Log in' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Place order' })).toHaveCount(0);
+});
+
+When('they log in as a new customer', async ({ page, request, scenario }) => {
+  await createCustomer(request, scenario);
+  await logIn(page, scenario);
+});
+
+Then('they see they are logged in', async ({ page, scenario }) => {
+  await expect(page.getByText(`Logged in as ${scenario.username}`)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Place order' })).toBeVisible();
+  await expect(page.getByLabel('Customer ID')).toHaveCount(0);
+});
+
+When('they log out', async ({ page }) => {
+  await page.getByRole('button', { name: 'Log out' }).click();
 });
 
 Given('their payments will be declined', async ({ request, scenario }) => {

@@ -1,14 +1,21 @@
 openapi: 3.1.0
 info:
   title: OrderFlow Order API
-  version: 0.4.0
-  description: Customer-facing API for placing, reading and cancelling orders. Specs 000 to 003 and 006. Status changes are pushed by the hub in contracts/realtime (spec 005).
+  version: 0.5.0
+  description: |
+    Customer-facing API for placing, reading and cancelling orders. Specs 000 to 003, 006 and 012.
+    Status changes are pushed by the hub in contracts/realtime (spec 005).
+    Every operation needs a login (spec 012): an access token from the `orderflow` Keycloak realm,
+    audience `orderflow-api`. The customer is the token's subject; another customer's order
+    answers 404, exactly like an order that does not exist.
   contact:
     name: OrderFlow
     url: https://example.com/orderflow
 servers:
   - url: http://localhost:5101
     description: Local (dotnet run)
+security:
+  - bearer: []
 tags:
   - name: orders
     description: Place and read orders.
@@ -37,6 +44,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Order'
+        '401':
+          description: No valid login (spec 012).
         '400':
           description: The order is invalid; errors are keyed by field.
           content:
@@ -63,8 +72,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Order'
+        '401':
+          description: No valid login (spec 012).
         '404':
-          description: No order with that ID.
+          description: No order with that ID for the logged-in customer.
   /orders/{orderId}/cancellation:
     post:
       operationId: cancelOrder
@@ -94,8 +105,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Order'
+        '401':
+          description: No valid login (spec 012).
         '404':
-          description: No order with that ID.
+          description: No order with that ID for the logged-in customer.
         '409':
           description: The order is already confirmed and cannot be cancelled.
           content:
@@ -103,6 +116,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
 components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token from Keycloak, realm `orderflow` (ADR 0008).
   schemas:
     OrderLine:
       type: object
@@ -118,11 +137,9 @@ components:
           examples: [2]
     PlaceOrderRequest:
       type: object
-      required: [customerId, lines]
+      required: [lines]
+      description: The customer is the logged-in one (spec 012, R-1); the request cannot name another.
       properties:
-        customerId:
-          type: string
-          minLength: 1
         lines:
           type: array
           minItems: 1

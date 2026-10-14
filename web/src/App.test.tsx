@@ -5,9 +5,11 @@ import { App } from './App';
 import * as clients from './api/clients';
 import type { Order } from './api/clients';
 import { watchOrder } from './api/live';
+import { currentCustomer, logIn, logOut } from './auth';
 
 vi.mock('./api/clients');
 vi.mock('./api/live');
+vi.mock('./auth');
 
 const pending: Order = {
   orderId: '8f6c1d1e-6f0b-4c64-9d7e-0a8f6b1b2c3d',
@@ -26,7 +28,7 @@ type Live = { orderId: string; push: (order: Order) => Promise<void>; joined: ()
 async function placeAndWatch(): Promise<Live> {
   vi.mocked(clients.placeOrder).mockResolvedValue({ ok: true, order: pending });
   render(<App />);
-  await userEvent.click(screen.getByRole('button', { name: 'Place order' }));
+  await userEvent.click(await screen.findByRole('button', { name: 'Place order' }));
   await waitFor(() => expect(watchOrder).toHaveBeenCalled());
   const [orderId, onUpdate, onWatching] = vi.mocked(watchOrder).mock.calls[0];
   return {
@@ -43,6 +45,7 @@ describe('App', () => {
     vi.mocked(clients.getInbox).mockResolvedValue([]);
     vi.mocked(clients.getOrder).mockResolvedValue(pending);
     vi.mocked(watchOrder).mockImplementation(() => vi.fn());
+    vi.mocked(currentCustomer).mockResolvedValue({ id: 'customer-1', name: 'alice' });
   });
 
   afterEach(() => {
@@ -64,11 +67,11 @@ describe('App', () => {
     });
 
     render(<App />);
-    await userEvent.click(screen.getByRole('button', { name: 'Place order' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Place order' }));
 
     const order = await screen.findByRole('region', { name: 'Order' });
     expect(within(order).getByText('Pending')).toBeInTheDocument();
-    expect(clients.placeOrder).toHaveBeenCalledWith('customer-1', 'SKU-001', 1);
+    expect(clients.placeOrder).toHaveBeenCalledWith('SKU-001', 1);
   });
 
   it('watches the placed order and shows the pushed confirmation, then stops watching (spec 005, AC-1)', async () => {
@@ -182,6 +185,38 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: 'Cancel order' })).not.toBeInTheDocument();
   });
 
+  it('asks a visitor to log in, and shows no order form (spec 012, AC-6)', async () => {
+    vi.mocked(currentCustomer).mockResolvedValue(null);
+    render(<App />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Log in' }));
+
+    expect(logIn).toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Place order' })).not.toBeInTheDocument();
+  });
+
+  it('shows who is logged in, with no customer ID field (spec 012, AC-2, AC-6)', async () => {
+    render(<App />);
+
+    expect(await screen.findByText('Logged in as alice')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Customer ID')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Place order' })).toBeInTheDocument();
+  });
+
+  it('reads the logged-in customer inbox', async () => {
+    await placeAndWatch();
+
+    await waitFor(() => expect(clients.getInbox).toHaveBeenCalledWith('customer-1'));
+  });
+
+  it('logs out (spec 012, AC-6)', async () => {
+    render(<App />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Log out' }));
+
+    expect(logOut).toHaveBeenCalled();
+  });
+
   it('lists validation errors from the API', async () => {
     vi.mocked(clients.placeOrder).mockResolvedValue({
       ok: false,
@@ -189,7 +224,7 @@ describe('App', () => {
     });
 
     render(<App />);
-    await userEvent.click(screen.getByRole('button', { name: 'Place order' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Place order' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Quantity must be at least 1.');
     expect(screen.queryByRole('region', { name: 'Order' })).not.toBeInTheDocument();

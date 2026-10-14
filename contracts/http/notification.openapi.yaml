@@ -1,14 +1,16 @@
 openapi: 3.1.0
 info:
   title: OrderFlow Notification API (fake inbox)
-  version: 0.2.0
-  description: Read side of the fake customer inbox. Lets the UI and tests see what the customer was told.
+  version: 0.3.0
+  description: Read side of the fake customer inbox. Lets the UI and tests see what the customer was told. Needs a login; a customer reads only their own inbox (spec 012).
   contact:
     name: OrderFlow
     url: https://example.com/orderflow
 servers:
   - url: http://localhost:5104
     description: Local (dotnet run)
+security:
+  - bearer: []
 tags:
   - name: inbox
     description: Messages sent to customers.
@@ -34,7 +36,17 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/InboxMessage'
+        '401':
+          description: No valid login (spec 012).
+        '403':
+          description: The inbox belongs to another customer.
 components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token from Keycloak, realm `orderflow` (ADR 0008).
   schemas:
     InboxMessage:
       type: object

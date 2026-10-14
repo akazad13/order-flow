@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -41,6 +42,8 @@ builder.AddOrderFlowServiceDefaults("notification", bus =>
     }
 });
 
+builder.AddOrderFlowAuthentication(); // spec 012, ADR 0008
+
 var app = builder.Build();
 
 if (usePostgres)
@@ -51,8 +54,12 @@ if (usePostgres)
 }
 
 app.MapOrderFlowDefaults();
-app.MapGet("/inbox/{customerId}", async (string customerId, IFakeInbox inbox, CancellationToken cancellationToken) =>
-        Results.Ok(await inbox.ForAsync(customerId, cancellationToken)))
+// Spec 012: a customer reads only their own inbox.
+app.MapGet("/inbox/{customerId}", async (string customerId, ClaimsPrincipal user, IFakeInbox inbox, CancellationToken cancellationToken) =>
+        customerId == user.CustomerId()
+            ? Results.Ok(await inbox.ForAsync(customerId, cancellationToken))
+            : Results.Forbid())
+    .RequireAuthorization()
     .WithName("getInbox");
 
 app.Run();

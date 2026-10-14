@@ -5,6 +5,7 @@ using OrderFlow.Contracts.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OrderFlow.IntegrationTesting;
+using OrderFlow.Testing;
 using OrderFlow.OrderService.Api;
 using OrderFlow.OrderService.Persistence;
 using OrderFlow.OrderService.StateMachine;
@@ -30,13 +31,13 @@ public sealed class OrderServiceTests(InfrastructureFixture infrastructure, ITes
         Guid orderId;
         await using (var before = new ServiceHost<Program>(settings))
         {
-            var client = await before.StartAsync();
+            var client = (await before.StartAsync()).LoggedInAs("customer-1");
             orderId = (await PlaceOrder(client, "SKU-001", 2)).OrderId;
             await WaitUntilTracked(before, orderId);
         }
 
         await using var after = new ServiceHost<Program>(settings);
-        var restarted = await after.StartAsync();
+        var restarted = (await after.StartAsync()).LoggedInAs("customer-1");
 
         var order = await restarted.GetFromJsonAsync<OrderResponse>($"/orders/{orderId}");
         order!.Status.ShouldBe("Pending");
@@ -58,7 +59,7 @@ public sealed class OrderServiceTests(InfrastructureFixture infrastructure, ITes
         var settings = await SettingsAsync();
         await using var testBus = await TestBus.StartAsync(infrastructure, settings["RabbitMq:VirtualHost"]!);
         await using var host = new ServiceHost<Program>(settings);
-        var client = await host.StartAsync();
+        var client = (await host.StartAsync()).LoggedInAs("customer-1");
 
         await infrastructure.Rabbit.StopAsync();
         Guid orderId;
@@ -86,7 +87,7 @@ public sealed class OrderServiceTests(InfrastructureFixture infrastructure, ITes
         testBus.React<StockReserved>((m, bus) => bus.Publish(new PaymentSucceeded(m.OrderId, Guid.NewGuid(), m.Total, DateTimeOffset.UtcNow)));
 
         await using var host = new ServiceHost<Program>(settings);
-        var client = await host.StartAsync();
+        var client = (await host.StartAsync()).LoggedInAs("customer-1");
 
         var placed = await Task.WhenAll(Enumerable.Range(0, 30).Select(_ => PlaceOrder(client, "SKU-003", 1)));
         var ids = placed.Select(o => o.OrderId).ToHashSet();
@@ -107,7 +108,7 @@ public sealed class OrderServiceTests(InfrastructureFixture infrastructure, ITes
         testBus.React<OrderPlaced>((m, bus) => bus.Publish(new StockReserved(m.OrderId, m.CustomerId, [], 10.00m, DateTimeOffset.UtcNow)));
 
         await using var host = new ServiceHost<Program>(settings);
-        var client = await host.StartAsync();
+        var client = (await host.StartAsync()).LoggedInAs("customer-1");
 
         var placed = await Task.WhenAll(Enumerable.Range(0, 20).Select(_ => PlaceOrder(client, "SKU-003", 1)));
         var ids = placed.Select(o => o.OrderId).ToHashSet();
@@ -200,7 +201,7 @@ public sealed class OrderServiceTests(InfrastructureFixture infrastructure, ITes
 
     private static async Task<OrderResponse> PlaceOrder(HttpClient client, string sku, int quantity)
     {
-        var response = await client.PostAsJsonAsync("/orders", new PlaceOrderRequest("customer-1", [new OrderLineDto(sku, quantity)]));
+        var response = await client.PostAsJsonAsync("/orders", new PlaceOrderRequest([new OrderLineDto(sku, quantity)]));
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
         return (await response.Content.ReadFromJsonAsync<OrderResponse>())!;
     }

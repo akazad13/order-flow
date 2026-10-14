@@ -76,6 +76,20 @@ export interface operations {
                     "application/json": components["schemas"]["InboxMessage"][];
                 };
             };
+            /** @description No valid login (spec 012). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The inbox belongs to another customer. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
 }

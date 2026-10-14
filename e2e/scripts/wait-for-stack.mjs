@@ -5,6 +5,7 @@ const targets = [
   'http://localhost:5103/health',
   'http://localhost:5104/health',
   'http://localhost:5180/',
+  'http://localhost:8180/realms/orderflow/.well-known/openid-configuration', // Keycloak (spec 012)
 ];
 const deadline = Date.now() + 120_000;
 

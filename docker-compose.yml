@@ -24,6 +24,27 @@ services:
       timeout: 5s
       retries: 20
 
+  # Customer logins (spec 012, ADR 0008). Dev mode, admin/admin: local and CI only.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4.2
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: http://localhost:8180 # the issuer browsers see
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true" # services reach it as http://keycloak:8080
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./deploy/keycloak:/opt/keycloak/data/import:ro
+    ports:
+      - "8180:8080"
+    healthcheck:
+      # The image has no curl: ask the management port's readiness check over bash's /dev/tcp.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+
   rabbitmq:
     image: rabbitmq:4.1-management
     ports:
@@ -44,9 +65,14 @@ services:
       RabbitMq__Host: rabbitmq
       Persistence__Provider: Postgres # ADR 0005
       ConnectionStrings__Orders: Host=postgres;Database=orders;Username=orderflow;Password=orderflow
+      # Spec 012, ADR 0008: keys from Keycloak inside compose; tokens name the browser's address as issuer.
+      Auth__Authority: http://localhost:8180/realms/orderflow
+      Auth__MetadataAddress: http://keycloak:8080/realms/orderflow/.well-known/openid-configuration
+      Auth__RequireHttpsMetadata: "false"
     depends_on:
       rabbitmq: { condition: service_healthy }
       postgres: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
     ports: ["5101:8080"]
 
   inventory:
@@ -88,9 +114,14 @@ services:
       RabbitMq__Host: rabbitmq
       Persistence__Provider: Postgres # ADR 0005, spec 011
       ConnectionStrings__Notifications: Host=postgres;Database=notifications;Username=orderflow;Password=orderflow
+      # Spec 012, ADR 0008: keys from Keycloak inside compose; tokens name the browser's address as issuer.
+      Auth__Authority: http://localhost:8180/realms/orderflow
+      Auth__MetadataAddress: http://keycloak:8080/realms/orderflow/.well-known/openid-configuration
+      Auth__RequireHttpsMetadata: "false"
     depends_on:
       rabbitmq: { condition: service_healthy }
       postgres: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
     ports: ["5104:8080"]
 
   web:

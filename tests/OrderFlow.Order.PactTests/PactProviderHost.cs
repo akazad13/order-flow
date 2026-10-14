@@ -13,6 +13,7 @@ using OrderFlow.Contracts.Events;
 using OrderFlow.OrderService.Api;
 using OrderFlow.OrderService.Domain;
 using OrderFlow.OrderService.Persistence;
+using OrderFlow.Testing;
 
 namespace OrderFlow.OrderService.PactTests;
 
@@ -45,6 +46,7 @@ public sealed class PactProviderHost : WebApplicationFactory<Program>
         builder.ConfigureTestServices(services =>
         {
             services.AddMassTransitTestHarness();
+            services.TrustTestTokens(); // spec 012
             services.AddSingleton<IStartupFilter, ProviderStateStartupFilter>();
 
             if (_renameStatusTo is { } name)

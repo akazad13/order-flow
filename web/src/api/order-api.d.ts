@@ -76,8 +76,8 @@ export interface components {
             /** @example 2 */
             quantity: number;
         };
+        /** @description The customer is the logged-in one (spec 012, R-1); the request cannot name another. */
         PlaceOrderRequest: {
-            customerId: string;
             lines: components["schemas"]["OrderLine"][];
         };
         /**
@@ -167,6 +167,13 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ValidationProblem"];
                 };
             };
+            /** @description No valid login (spec 012). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     getOrder: {
@@ -189,7 +196,14 @@ export interface operations {
                     "application/json": components["schemas"]["Order"];
                 };
             };
-            /** @description No order with that ID. */
+            /** @description No valid login (spec 012). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No order with that ID for the logged-in customer. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -227,7 +241,14 @@ export interface operations {
                     "application/json": components["schemas"]["Order"];
                 };
             };
-            /** @description No order with that ID. */
+            /** @description No valid login (spec 012). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No order with that ID for the logged-in customer. */
             404: {
                 headers: {
                     [name: string]: unknown;

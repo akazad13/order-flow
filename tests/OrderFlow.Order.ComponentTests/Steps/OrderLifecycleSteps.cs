@@ -29,7 +29,7 @@ public sealed class OrderLifecycleSteps(OrderServiceFactory service)
     [Given("customer {string} has placed an order for {int} x {string}")]
     public async Task GivenCustomerHasPlacedAnOrder(string customerId, int quantity, string sku)
     {
-        var response = await service.CreateClient().PostAsJsonAsync("/orders", new PlaceOrderRequest(customerId, [new OrderLineDto(sku, quantity)]));
+        var response = await service.ClientFor(customerId).PostAsJsonAsync("/orders", new PlaceOrderRequest([new OrderLineDto(sku, quantity)]));
         response.EnsureSuccessStatusCode();
         _placed = await response.Content.ReadFromJsonAsync<OrderResponse>();
 
@@ -135,7 +135,7 @@ public sealed class OrderLifecycleSteps(OrderServiceFactory service)
     [Then(@"^the order has status ""(\w+)"" and a total of (\d+\.\d{2})$")]
     public async Task ThenTheOrderHasStatusAndTotal(string status, string total)
     {
-        var order = await service.CreateClient().GetFromJsonAsync<OrderResponse>($"/orders/{_placed!.OrderId}");
+        var order = await service.ClientFor(_placed!.CustomerId).GetFromJsonAsync<OrderResponse>($"/orders/{_placed.OrderId}");
 
         order!.Status.ShouldBe(status);
         order.Total.ShouldBe(Money(total));
@@ -209,7 +209,7 @@ public sealed class OrderLifecycleSteps(OrderServiceFactory service)
     {
         // A customer's request is handled asynchronously (spec 006); wait for the outcome.
         await Saga.Exists(_placed!.OrderId, machine => machine.Cancelled);
-        var order = await service.CreateClient().GetFromJsonAsync<OrderResponse>($"/orders/{_placed!.OrderId}");
+        var order = await service.ClientFor(_placed!.CustomerId).GetFromJsonAsync<OrderResponse>($"/orders/{_placed.OrderId}");
 
         order!.Status.ShouldBe("Cancelled");
         order.Cancellation.ShouldBe(new CancellationDto(reason, detail));

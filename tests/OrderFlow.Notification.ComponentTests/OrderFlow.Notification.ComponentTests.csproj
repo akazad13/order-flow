@@ -21,6 +21,7 @@
     <ReqnrollFeatureFiles Include="..\..\features\component\order-cancelled-notification.feature" Link="Features\order-cancelled-notification.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\duplicate-notification.feature" Link="Features\duplicate-notification.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\payment-refunded-notification.feature" Link="Features\payment-refunded-notification.feature" />
+    <ReqnrollFeatureFiles Include="..\..\features\component\inbox-access.feature" Link="Features\inbox-access.feature" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,6 +30,11 @@
 
   <ItemGroup>
     <Compile Include="..\Shared\Eventually.cs" Link="Support\Eventually.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\TestTokens.cs" Link="Support\TestTokens.cs" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
   </ItemGroup>
 
 </Project>

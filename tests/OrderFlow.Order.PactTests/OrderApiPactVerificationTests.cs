@@ -1,6 +1,7 @@
 using PactNet;
 using PactNet.Infrastructure.Outputters;
 using PactNet.Verifier;
+using OrderFlow.Testing;
 using Xunit.Abstractions;
 
 namespace OrderFlow.OrderService.PactTests;
@@ -28,6 +29,7 @@ public sealed class OrderApiPactVerificationTests(ITestOutputHelper output)
             .WithHttpEndpoint(host.BaseUri)
             .WithFileSource(new FileInfo(PactFile()))
             .WithProviderStateUrl(new Uri(host.BaseUri, "/provider-states"))
+            .WithCustomHeader("Authorization", Login)
             .Verify();
     }
 
@@ -50,9 +52,16 @@ public sealed class OrderApiPactVerificationTests(ITestOutputHelper output)
             .WithHttpEndpoint(host.BaseUri)
             .WithFileSource(new FileInfo(PactFile()))
             .WithProviderStateUrl(new Uri(host.BaseUri, "/provider-states"))
+            .WithCustomHeader("Authorization", Login)
             .Verify());
         Assert.Contains("missing the following keys: status", log.Text);
     }
+
+    /// <summary>
+    /// The contract records only that a bearer token is sent; the provider needs a real one. Provider
+    /// states create orders for customer-1, so the replayed requests log in as customer-1 (spec 012).
+    /// </summary>
+    private static string Login => $"Bearer {TestTokens.For("customer-1")}";
 
     private static string PactFile()
     {

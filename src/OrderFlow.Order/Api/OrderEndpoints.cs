@@ -1,7 +1,9 @@
+using System.Security.Claims;
 using MassTransit;
 using OrderFlow.Contracts.Events;
 using OrderFlow.OrderService.Domain;
 using OrderFlow.OrderService.Persistence;
+using OrderFlow.ServiceDefaults;
 
 namespace OrderFlow.OrderService.Api;
 
@@ -9,21 +11,34 @@ public static class OrderEndpoints
 {
     public static IEndpointRouteBuilder MapOrderEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/orders", PlaceOrder).WithName("placeOrder");
-        app.MapGet("/orders/{orderId:guid}", GetOrder).WithName("getOrder");
-        app.MapPost("/orders/{orderId:guid}/cancellation", CancelOrder).WithName("cancelOrder");
+        // Spec 012: every order operation needs a login.
+        var orders = app.MapGroup("/orders").RequireAuthorization();
+        orders.MapPost("", PlaceOrder).WithName("placeOrder");
+        orders.MapGet("/{orderId:guid}", GetOrder).WithName("getOrder");
+        orders.MapPost("/{orderId:guid}/cancellation", CancelOrder).WithName("cancelOrder");
         return app;
+    }
+
+    /// <summary>
+    /// The order, if it belongs to the logged-in customer. Someone else's order is treated exactly
+    /// like one that does not exist, so order IDs reveal nothing (spec 012, R-2).
+    /// </summary>
+    public static async Task<Order?> FindOwnAsync(this IOrderRepository orders, Guid orderId, ClaimsPrincipal user, CancellationToken cancellationToken)
+    {
+        var order = await orders.GetAsync(orderId, cancellationToken);
+        return order?.CustomerId == user.CustomerId() ? order : null;
     }
 
     private static async Task<IResult> PlaceOrder(
         PlaceOrderRequest request,
+        ClaimsPrincipal user,
         IOrderRepository orders,
         IPublishEndpoint publisher,
         TimeProvider clock,
         CancellationToken cancellationToken)
     {
         var lines = request.Lines?.Select(l => new OrderLine(l.Sku, l.Quantity)).ToList();
-        var result = Order.Place(request.CustomerId, lines, clock);
+        var result = Order.Place(user.CustomerId(), lines, clock);
         if (!result.IsValid)
         {
             return Results.ValidationProblem(result.Errors);
@@ -52,12 +67,13 @@ public static class OrderEndpoints
     /// </summary>
     private static async Task<IResult> CancelOrder(
         Guid orderId,
+        ClaimsPrincipal user,
         IOrderRepository orders,
         IPublishEndpoint publisher,
         TimeProvider clock,
         CancellationToken cancellationToken)
     {
-        var order = await orders.GetAsync(orderId, cancellationToken);
+        var order = await orders.FindOwnAsync(orderId, user, cancellationToken);
         switch (order?.Status)
         {
             case null:
@@ -80,9 +96,9 @@ public static class OrderEndpoints
         }
     }
 
-    private static async Task<IResult> GetOrder(Guid orderId, IOrderRepository orders, CancellationToken cancellationToken)
+    private static async Task<IResult> GetOrder(Guid orderId, ClaimsPrincipal user, IOrderRepository orders, CancellationToken cancellationToken)
     {
-        var order = await orders.GetAsync(orderId, cancellationToken);
+        var order = await orders.FindOwnAsync(orderId, user, cancellationToken);
         return order is null ? Results.NotFound() : Results.Ok(OrderResponse.From(order));
     }
 }

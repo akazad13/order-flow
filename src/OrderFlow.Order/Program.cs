@@ -48,6 +48,7 @@ builder.AddOrderFlowServiceDefaults("order", bus =>
 });
 
 builder.Services.AddSignalR();
+builder.AddOrderFlowAuthentication(); // spec 012, ADR 0008
 
 builder.Services.AddScoped<RecordStockHeldActivity>();
 builder.Services.AddScoped<ConfirmOrderActivity>();

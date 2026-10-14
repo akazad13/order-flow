@@ -24,20 +24,25 @@ const EXAMPLE_ID = '8f6c1d1e-6f0b-4c64-9d7e-0a8f6b1b2c3d';
 const isoTimestamp = (example: string) => regex('^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$', example);
 const json = regex('^application/json(;.*)?$', 'application/json; charset=utf-8');
 
+// Spec 012: every request carries the customer's access token. The contract records only that a
+// bearer token is sent; the provider test supplies a real one for the customer its states create.
+const TOKEN = 'a-test-access-token';
+const LOGGED_IN = { Authorization: regex('^Bearer .+$', `Bearer ${TOKEN}`) };
+
 describe('Order API, as the web UI uses it', () => {
   it('places a valid order', () =>
     provider
       .addInteraction()
       .uponReceiving('a request to place a valid order')
       .withRequest('POST', '/orders', (request) =>
-        request.jsonBody({ customerId: 'customer-1', lines: [{ sku: 'SKU-001', quantity: 2 }] }),
+        request.headers(LOGGED_IN).jsonBody({ lines: [{ sku: 'SKU-001', quantity: 2 }] }),
       )
       .willRespondWith(201, (response) =>
         response
           .headers({ 'Content-Type': json, Location: regex('^/orders/[0-9a-f-]{36}$', `/orders/${EXAMPLE_ID}`) })
           .jsonBody({
             orderId: uuid(EXAMPLE_ID),
-            customerId: 'customer-1',
+            customerId: like('customer-1'),
             status: 'Pending',
             lines: eachLike({ sku: like('SKU-001'), quantity: like(2) }),
             total: null,
@@ -46,7 +51,7 @@ describe('Order API, as the web UI uses it', () => {
           }),
       )
       .executeTest(async (mockServer) => {
-        const result = await createOrderApi(mockServer.url).placeOrder('customer-1', 'SKU-001', 2);
+        const result = await createOrderApi(mockServer.url, () => TOKEN).placeOrder('SKU-001', 2);
 
         expect(result.ok).toBe(true);
         expect(result.ok && result.order.status).toBe('Pending');
@@ -57,7 +62,7 @@ describe('Order API, as the web UI uses it', () => {
       .addInteraction()
       .uponReceiving('a request to place an order with a zero quantity')
       .withRequest('POST', '/orders', (request) =>
-        request.jsonBody({ customerId: 'customer-1', lines: [{ sku: 'SKU-001', quantity: 0 }] }),
+        request.headers(LOGGED_IN).jsonBody({ lines: [{ sku: 'SKU-001', quantity: 0 }] }),
       )
       .willRespondWith(400, (response) =>
         response
@@ -69,7 +74,7 @@ describe('Order API, as the web UI uses it', () => {
           }),
       )
       .executeTest(async (mockServer) => {
-        const result = await createOrderApi(mockServer.url).placeOrder('customer-1', 'SKU-001', 0);
+        const result = await createOrderApi(mockServer.url, () => TOKEN).placeOrder('SKU-001', 0);
 
         expect(result.ok).toBe(false);
         expect(!result.ok && Object.keys(result.problem.errors)).toContain('lines[0].quantity');
@@ -80,7 +85,7 @@ describe('Order API, as the web UI uses it', () => {
       .addInteraction()
       .given('a pending order exists')
       .uponReceiving('a request for a pending order')
-      .withRequest('GET', fromProviderState('/orders/${orderId}', `/orders/${EXAMPLE_ID}`))
+      .withRequest('GET', fromProviderState('/orders/${orderId}', `/orders/${EXAMPLE_ID}`), (request) => request.headers(LOGGED_IN))
       .willRespondWith(200, (response) =>
         response.headers({ 'Content-Type': json }).jsonBody({
           orderId: uuid(EXAMPLE_ID),
@@ -93,7 +98,7 @@ describe('Order API, as the web UI uses it', () => {
         }),
       )
       .executeTest(async (mockServer) => {
-        const order = await createOrderApi(mockServer.url).getOrder(EXAMPLE_ID);
+        const order = await createOrderApi(mockServer.url, () => TOKEN).getOrder(EXAMPLE_ID);
 
         expect(order?.status).toBe('Pending');
       }));
@@ -103,7 +108,7 @@ describe('Order API, as the web UI uses it', () => {
       .addInteraction()
       .given('a confirmed order exists', { total: 37.0 })
       .uponReceiving('a request for a confirmed order')
-      .withRequest('GET', fromProviderState('/orders/${orderId}', `/orders/${EXAMPLE_ID}`))
+      .withRequest('GET', fromProviderState('/orders/${orderId}', `/orders/${EXAMPLE_ID}`), (request) => request.headers(LOGGED_IN))
       .willRespondWith(200, (response) =>
         response.headers({ 'Content-Type': json }).jsonBody({
           orderId: uuid(EXAMPLE_ID),
@@ -113,7 +118,7 @@ describe('Order API, as the web UI uses it', () => {
         }),
       )
       .executeTest(async (mockServer) => {
-        const order = await createOrderApi(mockServer.url).getOrder(EXAMPLE_ID);
+        const order = await createOrderApi(mockServer.url, () => TOKEN).getOrder(EXAMPLE_ID);
 
         expect(order?.status).toBe('Confirmed');
         expect(order?.total).toBe(37);
@@ -124,7 +129,7 @@ describe('Order API, as the web UI uses it', () => {
       .addInteraction()
       .given('an order cancelled for a shortage exists')
       .uponReceiving('a request for a cancelled order')
-      .withRequest('GET', fromProviderState('/orders/${orderId}', `/orders/${EXAMPLE_ID}`))
+      .withRequest('GET', fromProviderState('/orders/${orderId}', `/orders/${EXAMPLE_ID}`), (request) => request.headers(LOGGED_IN))
       .willRespondWith(200, (response) =>
         response.headers({ 'Content-Type': json }).jsonBody({
           orderId: uuid(EXAMPLE_ID),
@@ -133,7 +138,7 @@ describe('Order API, as the web UI uses it', () => {
         }),
       )
       .executeTest(async (mockServer) => {
-        const order = await createOrderApi(mockServer.url).getOrder(EXAMPLE_ID);
+        const order = await createOrderApi(mockServer.url, () => TOKEN).getOrder(EXAMPLE_ID);
 
         expect(order?.status).toBe('Cancelled');
         expect(order?.cancellation?.reason).toBe('OutOfStock');
@@ -143,10 +148,10 @@ describe('Order API, as the web UI uses it', () => {
     provider
       .addInteraction()
       .uponReceiving('a request for an order that does not exist')
-      .withRequest('GET', '/orders/00000000-0000-0000-0000-000000000000')
+      .withRequest('GET', '/orders/00000000-0000-0000-0000-000000000000', (request) => request.headers(LOGGED_IN))
       .willRespondWith(404)
       .executeTest(async (mockServer) => {
-        const order = await createOrderApi(mockServer.url).getOrder('00000000-0000-0000-0000-000000000000');
+        const order = await createOrderApi(mockServer.url, () => TOKEN).getOrder('00000000-0000-0000-0000-000000000000');
 
         expect(order).toBeNull();
       }));
@@ -157,10 +162,10 @@ describe('Order API, as the web UI uses it', () => {
       .addInteraction()
       .given('a pending order exists')
       .uponReceiving('a request to cancel a pending order')
-      .withRequest('POST', fromProviderState('/orders/${orderId}/cancellation', `/orders/${EXAMPLE_ID}/cancellation`))
+      .withRequest('POST', fromProviderState('/orders/${orderId}/cancellation', `/orders/${EXAMPLE_ID}/cancellation`), (request) => request.headers(LOGGED_IN))
       .willRespondWith(202)
       .executeTest(async (mockServer) => {
-        const result = await createOrderApi(mockServer.url).cancelOrder(EXAMPLE_ID);
+        const result = await createOrderApi(mockServer.url, () => TOKEN).cancelOrder(EXAMPLE_ID);
 
         expect(result.outcome).toBe('accepted');
       }));
@@ -170,10 +175,10 @@ describe('Order API, as the web UI uses it', () => {
       .addInteraction()
       .given('a confirmed order exists', { total: 37.0 })
       .uponReceiving('a request to cancel a confirmed order')
-      .withRequest('POST', fromProviderState('/orders/${orderId}/cancellation', `/orders/${EXAMPLE_ID}/cancellation`))
+      .withRequest('POST', fromProviderState('/orders/${orderId}/cancellation', `/orders/${EXAMPLE_ID}/cancellation`), (request) => request.headers(LOGGED_IN))
       .willRespondWith(409)
       .executeTest(async (mockServer) => {
-        const result = await createOrderApi(mockServer.url).cancelOrder(EXAMPLE_ID);
+        const result = await createOrderApi(mockServer.url, () => TOKEN).cancelOrder(EXAMPLE_ID);
 
         expect(result.outcome).toBe('too-late');
       }));
