@@ -1,0 +1,61 @@
+name: Nightly stability
+
+# Spec 009, AC-7: flakiness is found on a schedule, not in someone's pull request.
+# CI never retries (constitution V); a red night is a bug to fix the next day.
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  e2e-repeated:
+    name: E2E x10 (docker compose + Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - run: docker compose up -d --build
+        working-directory: .
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run wait
+      - run: npx bddgen && npx playwright test --repeat-each=10
+      - name: No faulted or skipped messages
+        if: ${{ !cancelled() }}
+        run: docker compose exec -T rabbitmq rabbitmqctl list_queues name messages --formatter json | node scripts/check-error-queues.mjs -
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+      - run: docker compose logs
+        if: failure()
+        working-directory: .
+      - run: docker compose down -v
+        if: always()
+        working-directory: .
+
+  integration:
+    name: Integration tests (Testcontainers)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet test OrderFlow.slnx --filter "Category=Integration" --logger "trx" --results-directory test-results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-integration-results
+          path: test-results

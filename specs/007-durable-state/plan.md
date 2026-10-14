@@ -29,11 +29,11 @@ New layer: `tests/OrderFlow.Order.IntegrationTests`, `tests/OrderFlow.Inventory.
 
 | Criterion | Integration | E2E | Test |
 | --- | --- | --- | --- |
-| AC-1 Orders survive restart | x | | `OrderDurabilityTests.Order_and_its_progress_survive_a_restart` |
-| AC-2 Stock and holds survive restart | x | | `InventoryDurabilityTests.Holds_survive_a_restart_and_are_released_once` |
-| AC-3 Saved and announced together | x | | `OrderOutboxTests.Order_placed_while_the_broker_is_down_is_announced_when_it_is_back` |
-| AC-4 No overselling | x | | `InventoryConcurrencyTests.Twenty_orders_for_ten_items_hold_exactly_ten` |
-| AC-5 Many orders at once | x | | `OrderConcurrencyTests.Thirty_orders_at_once_all_confirm` |
+| AC-1 Orders survive restart | x | | `OrderServiceTests.Order_and_its_progress_survive_a_restart` |
+| AC-2 Stock and holds survive restart | x | | `InventoryServiceTests.Holds_survive_a_restart_and_are_released_after_it` |
+| AC-3 Saved and announced together | x | | `OrderServiceTests.Order_placed_while_the_broker_is_down_is_announced_when_it_is_back` |
+| AC-4 No overselling | x | | `InventoryServiceTests.Twenty_orders_for_ten_items_hold_exactly_ten` |
+| AC-5 Many orders at once | x | | `OrderServiceTests.Thirty_orders_at_once_all_confirm` |
 | AC-6 E2E still green | | x | All E2E scenarios, 100 runs |
 | R-1, R-2 | x | | Covered by AC-3 and AC-4 (outbox commits state and message together) |
 

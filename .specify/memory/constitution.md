@@ -22,7 +22,7 @@ Each acceptance criterion maps to at least one Gherkin scenario under `features/
 | Integration | `tests/*.IntegrationTests` | Storage, outbox and broker behavior on real PostgreSQL and RabbitMQ (Testcontainers) |
 | E2E | `features/e2e` + `e2e/` | A customer journey works on the real stack |
 
-`plan.md` records which layer covers each criterion.
+`plan.md` records which layer covers each criterion, naming each test exactly. CI checks it (`npm run check:specs`, ADR 0007).
 
 ## IV. Events are facts
 
@@ -30,7 +30,7 @@ Events are named in the past tense, are immutable once published, and are versio
 
 ## V. Deterministic tests
 
-No fixed sleeps. Async outcomes are awaited with a timeout (test harness, `expect(...).toContainText`, polling helpers). Each test owns its data (unique IDs). A flaky test is fixed or quarantined the day it is seen; CI never retries.
+No fixed sleeps. Async outcomes are awaited with a timeout (test harness, `expect(...).toContainText`, polling helpers). Each test owns its data (unique IDs). A flaky test is fixed or quarantined the day it is seen; CI never retries. No message may fault quietly: after E2E, CI fails if any error or skipped queue holds a message, and a nightly run repeats E2E ten times (ADR 0007).
 
 ## VI. Dependencies
 

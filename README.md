@@ -12,6 +12,8 @@ A small event-driven order platform built to practice **spec-driven development*
 | `pacts/` | Consumer-driven contract: what the web UI relies on from the Order API (Pact, ADR 0006) |
 | `features/` | Gherkin: `component/` (Reqnroll) and `e2e/` (playwright-bdd) |
 | `docs/adr/` | Architecture decisions |
+| `docs/retro.md` | What eight weeks of SDD taught: which layer caught which bug, what is still open |
+| `scripts/` | Spec gate (`check-specs.mjs`) and its tests |
 | `src/` | .NET 10 services: Order, Inventory, Payment, Notification |
 | `tests/` | Unit, component, contract and integration tests (.NET); `Shared/` holds helpers linked into each component test project |
 | `web/` | React + TypeScript UI (types generated from OpenAPI) |
@@ -49,6 +51,18 @@ Contract lint (OpenAPI with Spectral, AsyncAPI with the AsyncAPI CLI):
 npm ci && npm run lint:contracts
 ```
 
+Spec gate: specs, plans, feature files and tests agree, and no banned package is used (spec 009):
+
+```bash
+npm run check:specs
+```
+
+The gate scripts' own tests:
+
+```bash
+npm run test:scripts
+```
+
 End-to-end, against the full stack:
 
 ```bash
@@ -58,6 +72,14 @@ docker compose up -d --build --force-recreate
 ```bash
 cd e2e && npm ci && npx playwright install chromium && npm run wait && npm test
 ```
+
+Then check that no message faulted quietly (CI does this after every E2E run):
+
+```bash
+docker compose exec -T rabbitmq rabbitmqctl list_queues name messages --formatter json | node e2e/scripts/check-error-queues.mjs -
+```
+
+A nightly workflow (`.github/workflows/nightly.yml`) repeats E2E ten times and runs the integration tests.
 
 ## Run the stack
 
@@ -86,7 +108,8 @@ For UI work, run `npm --prefix web run dev` (http://localhost:5173); it proxies 
 1. Copy the templates from `.specify/templates/` into `specs/NNN-name/` and write `spec.md`. Resolve open questions.
 2. Write `plan.md`, including the criterion-to-test-layer table.
 3. Change the contracts and the Gherkin first; lint; watch the scenarios fail.
-4. Work through `tasks.md`, test first.
+4. Work through `tasks.md`, test first. Name each test exactly in the plan's test table.
 5. After changing `contracts/http`, run `npm --prefix web run gen:api` (CI fails if the types are stale).
+6. Before marking the spec Done, run `npm run check:specs`.
 
 See `specs/000-walking-skeleton/` for a complete example.

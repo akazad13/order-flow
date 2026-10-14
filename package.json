@@ -4,7 +4,9 @@
   "scripts": {
     "lint:openapi": "spectral lint \"contracts/http/*.openapi.yaml\" --fail-severity warn",
     "lint:asyncapi": "asyncapi validate contracts/events/asyncapi.yaml && asyncapi validate contracts/realtime/order-updates.asyncapi.yaml",
-    "lint:contracts": "npm run lint:openapi && npm run lint:asyncapi"
+    "lint:contracts": "npm run lint:openapi && npm run lint:asyncapi",
+    "check:specs": "node scripts/check-specs.mjs",
+    "test:scripts": "node --test \"scripts/*.test.mjs\" \"e2e/scripts/*.test.mjs\""
   },
   "devDependencies": {
     "@asyncapi/cli": "^4.1.1",

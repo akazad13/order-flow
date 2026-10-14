@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using MassTransit;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using OrderFlow.Contracts.Events;
+using OrderFlow.OrderService.Api;
 using OrderFlow.OrderService.Domain;
 using OrderFlow.OrderService.Persistence;
 
@@ -21,8 +23,15 @@ namespace OrderFlow.OrderService.PactTests;
 /// </summary>
 public sealed class PactProviderHost : WebApplicationFactory<Program>
 {
-    public PactProviderHost()
+    private readonly string? _renameStatusTo;
+
+    /// <param name="renameStatusTo">
+    /// Breaks the API on purpose: the order's <c>status</c> field is written under this name
+    /// instead (spec 008, AC-5). Null for the real API.
+    /// </param>
+    public PactProviderHost(string? renameStatusTo = null)
     {
+        _renameStatusTo = renameStatusTo;
         Port = FreeTcpPort();
         UseKestrel(Port);
     }
@@ -37,6 +46,21 @@ public sealed class PactProviderHost : WebApplicationFactory<Program>
         {
             services.AddMassTransitTestHarness();
             services.AddSingleton<IStartupFilter, ProviderStateStartupFilter>();
+
+            if (_renameStatusTo is { } name)
+            {
+                services.ConfigureHttpJsonOptions(json => json.SerializerOptions.TypeInfoResolver = new DefaultJsonTypeInfoResolver
+                {
+                    Modifiers =
+                    {
+                        type =>
+                        {
+                            if (type.Type != typeof(OrderResponse)) return;
+                            foreach (var property in type.Properties.Where(p => p.Name == "status")) property.Name = name;
+                        },
+                    },
+                });
+            }
         });
     }
 

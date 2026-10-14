@@ -27,12 +27,12 @@ None to OpenAPI or events. New artifact: the pact file.
 
 ## Test plan
 
-| Criterion | Test |
-| --- | --- |
-| AC-1, AC-2 | `order-api.pact.test.ts` (6 interactions, type/format matchers) |
-| AC-3 | `OrderApiPactVerificationTests.Order_api_honours_the_web_ui_contract` |
-| AC-4 | CI steps (pact diff, verification in the .NET job) |
-| AC-5 | Manual mutation once: rename `status` in `OrderResponse`, run verification, see it fail; revert (recorded in tasks) |
+| Criterion | Contract | CI | Test |
+| --- | --- | --- | --- |
+| AC-1, AC-2 | x | x | `order-api.pact.test.ts` (8 interactions since spec 006, type/format matchers) |
+| AC-3 | x | x | `OrderApiPactVerificationTests.Order_api_honours_the_web_ui_contract` |
+| AC-4 | | x | CI steps (pact diff in the web job, verification in the .NET job) |
+| AC-5 | x | x | `OrderApiPactVerificationTests.Renaming_a_field_the_ui_reads_fails_verification` (automated in week 8, spec 009; was a manual mutation once) |
 
 ## Risks and decisions
 

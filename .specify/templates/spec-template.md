@@ -21,6 +21,10 @@ Number every criterion; tests and Gherkin scenarios reference these IDs.
 
 ## Edge cases
 
+Most defects in this repo came from message orderings (docs/retro.md). For each event the
+feature sends or receives, ask: what if it arrives twice, arrives before the event it follows,
+arrives at the same moment as a competing one, or arrives before the receiver knows the order?
+
 - <What happens when ...>
 
 ## Non-goals

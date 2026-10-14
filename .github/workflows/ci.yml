@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   contracts:
-    name: Lint contracts
+    name: Lint contracts, check specs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,6 +21,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint:contracts
+      # Spec 009: specs, plans, features and tests agree; no banned packages (AC-1 to AC-5).
+      - run: npm run check:specs
+      # The gates' own tests (AC-8).
+      - run: npm run test:scripts
 
   dotnet:
     name: .NET unit, component, contract and Pact provider tests
@@ -98,6 +102,11 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run wait
       - run: npm test
+      # Spec 009, AC-6: no message may have faulted quietly, even if every scenario passed.
+      # rabbitmqctl gives live counts; the management API's lag by about 5 seconds.
+      - name: No faulted or skipped messages
+        if: ${{ !cancelled() }}
+        run: docker compose exec -T rabbitmq rabbitmqctl list_queues name messages --formatter json | node scripts/check-error-queues.mjs -
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

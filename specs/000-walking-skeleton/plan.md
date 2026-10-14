@@ -32,7 +32,7 @@ None persisted. `Order` (id, customerId, lines, status, placedAt) lives in memor
 
 | Criterion | Unit | Component | Contract | E2E | Scenario / test |
 | --- | --- | --- | --- | --- | --- |
-| AC-1 | x | x | x | | `OrderTests`, `features/component/place-order.feature`, `OrderPlacedContractTests` |
+| AC-1 | x | x | x | | `OrderTests`, `features/component/place-order.feature`, `EventSchemaContractTests` |
 | AC-2 | x | x | | | `OrderTests`, `features/component/place-order.feature` |
 | AC-3 | | x | | | `features/component/order-received-notification.feature` |
 | AC-4 | | | | x | `features/e2e/walking-skeleton.feature` |

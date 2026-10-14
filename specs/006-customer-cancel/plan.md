@@ -56,9 +56,9 @@ AC-6: the API can see Pending and accept while `PaymentSucceeded` is already que
 | AC-1 Cancel a pending order | | x | x | | | x | `customer-cancel.feature` (awaiting stock, awaiting payment, not yet tracked); Pact 202 |
 | AC-2 Too late once confirmed | | x | x | | x | | `customer-cancel.feature`; Pact 409; `App.test.tsx` |
 | AC-3 Already cancelled | | x | | | | | `customer-cancel.feature` |
-| AC-4 Stock goes back | x | x | | x | | x | `CatalogTests`; `release-stock.feature` "cancelled before placed"; `InventoryServiceTests`; E2E stock check |
-| AC-5 No money kept | | x | x | | | | `refund-payment.feature` (void, refund, refund once, declined); PaymentRefunded schema |
-| AC-6 Race | | x | | x | | | `customer-cancel.feature` "payment succeeds after"; `OrderServiceTests.Cancel_and_payment_racing_end_one_way` |
+| AC-4 Stock goes back | x | x | | x | | x | `CatalogTests`; `release-stock.feature` "cancelled before placed"; `InventoryServiceTests.Orders_cancelled_while_being_placed_end_up_holding_nothing`; E2E stock check |
+| AC-5 No money kept | | x | x | | | | `settle-payment.feature` (void, refund, refund once, declined, stall); PaymentRefunded schema |
+| AC-6 Race | | x | | x | | | `customer-cancel.feature` "payment succeeds after"; `OrderServiceTests.Cancellation_and_payment_racing_end_one_way` |
 | AC-7 Customer told | | x | | | | x | `order-cancelled-notification.feature`, `payment-refunded-notification.feature`; E2E inbox |
 | AC-8 In the UI | | | | | x | x | `App.test.tsx`; `features/e2e/customer-cancel.feature` |
 

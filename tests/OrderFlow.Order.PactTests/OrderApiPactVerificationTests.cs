@@ -31,6 +31,29 @@ public sealed class OrderApiPactVerificationTests(ITestOutputHelper output)
             .Verify();
     }
 
+    [Fact]
+    public void Renaming_a_field_the_ui_reads_fails_verification()
+    {
+        // Spec 008, AC-5, automated by spec 009 (it was a manual mutation once): the same
+        // contract against an API that writes "state" instead of "status".
+        var log = new RecordingOutput(output);
+        using var host = new PactProviderHost(renameStatusTo: "state");
+        host.StartServer();
+
+        using var verifier = new PactVerifier("orderflow-order-api", new PactVerifierConfig
+        {
+            Outputters = [log],
+            LogLevel = PactLogLevel.Information,
+        });
+
+        Assert.ThrowsAny<Exception>(() => verifier
+            .WithHttpEndpoint(host.BaseUri)
+            .WithFileSource(new FileInfo(PactFile()))
+            .WithProviderStateUrl(new Uri(host.BaseUri, "/provider-states"))
+            .Verify());
+        Assert.Contains("missing the following keys: status", log.Text);
+    }
+
     private static string PactFile()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
@@ -45,5 +68,18 @@ public sealed class OrderApiPactVerificationTests(ITestOutputHelper output)
     private sealed class XunitOutput(ITestOutputHelper output) : IOutput
     {
         public void WriteLine(string line) => output.WriteLine(line);
+    }
+
+    private sealed class RecordingOutput(ITestOutputHelper output) : IOutput
+    {
+        private readonly System.Text.StringBuilder _text = new();
+
+        public string Text => _text.ToString();
+
+        public void WriteLine(string line)
+        {
+            _text.AppendLine(line);
+            output.WriteLine(line);
+        }
     }
 }

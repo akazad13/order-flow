@@ -27,6 +27,6 @@ Plan: [plan.md](plan.md)
 
 ## 4. Verify
 
-- [ ] T15 Push to GitHub and see CI green.
+- [-] T15 Push to GitHub and see CI green. (deferred: no GitHub remote yet; it needs the user's account, see docs/retro.md)
 - [x] T16 Run the E2E suite 20 times in a row locally without a failure (20/20, `--repeat-each=20`, 2026-10-14).
-- [ ] T17 Retro note: what was unclear in this spec? Update the template if needed.
+- [x] T17 Retro note: what was unclear in this spec? Update the template if needed. (Week 8: [docs/retro.md](../../docs/retro.md); templates updated.)

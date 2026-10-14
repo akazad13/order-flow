@@ -3,6 +3,7 @@
 Plan: [plan.md](plan.md)
 
 Each task is small (under 2 hours) and ends with a test going green. Write the failing scenario or test first.
+A task that cannot be done here is marked `- [-] Tn ... (deferred: reason)`; a Done spec has no `- [ ]` left.
 
 ## 1. Contracts
 
@@ -16,4 +17,4 @@ Each task is small (under 2 hours) and ends with a test going green. Write the f
 ## 3. Verify
 
 - [ ] Tn All layers green locally (`dotnet test`, `npm test` in web/, E2E against docker compose).
-- [ ] Tn+1 Spec status set to Done; plan test table matches reality.
+- [ ] Tn+1 Spec status set to Done; `npm run check:specs` passes.

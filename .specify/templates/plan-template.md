@@ -25,6 +25,11 @@ Spec: [spec.md](spec.md)
 
 ## Test plan (criterion to layer)
 
+One row per criterion (the first cell starts with its ID); mark at least one layer with `x`.
+Name tests exactly, in backticks: `file.feature`, `path/to/file`, `ClassTests` or
+`ClassTests.Method`, `File.test.tsx`. `npm run check:specs` fails on a missing row, an unmarked
+row or a name that does not exist (spec 009).
+
 | Criterion | Unit | Component | Contract | E2E | Scenario / test |
 | --- | --- | --- | --- | --- | --- |
 | AC-1 | | x | | | `features/component/....feature` |

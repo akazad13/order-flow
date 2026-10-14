@@ -32,6 +32,14 @@ public sealed class TakePaymentSteps(PaymentServiceFactory service)
     [When(@"^stock is reserved for an order by customer ""([^""]+)"" with a total of (\d+\.\d{2})$")]
     public Task WhenStockIsReservedForCustomer(string customerId, string total) => ReserveStock(customerId, total);
 
+    [When("stock is rejected for an order")]
+    public async Task WhenStockIsRejected()
+    {
+        // Spec 002, AC-3: Payment does not listen for shortages, so nothing may happen.
+        _ = service.CreateClient();
+        await service.Harness.Bus.Publish(new StockRejected(_orderId, "customer-1", [new StockShortage("TEST-A", 2, 1)], DateTimeOffset.UtcNow));
+    }
+
     [Then("PaymentFailed is published for that order with reason {string}")]
     public async Task ThenPaymentFailedIsPublished(string reason)
     {

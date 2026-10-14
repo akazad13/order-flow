@@ -37,7 +37,7 @@ Reasons are strings in the contract (not a C# enum on the wire), with constants 
 | --- | --- | --- | --- | --- | --- |
 | AC-1 Nothing held, shortage announced | x | x | x | | `CatalogTests`; `reject-stock.feature`; StockRejected schema |
 | AC-2 Cancelled, reason OutOfStock | x | x | x | | `OrderTests`; `cancel-order.feature`; OrderCancelled schema |
-| AC-3 No payment | | | | | By construction: Payment only consumes StockReserved (spec 001 R-2) |
+| AC-3 No payment | | x | | | `decline-payment.feature` "a shortage is never charged" (added week 8, spec 009); by construction Payment only consumes StockReserved (spec 001 R-2) |
 | AC-4 Customer told | | x | | x | `order-cancelled-notification.feature`; E2E inbox |
 | AC-5 Customer sees it | | | | x | `features/e2e/stock-rejection.feature` |
 | R-1, R-2 | x | x | | | `CatalogTests` (all short lines listed, unknown = 0) |
