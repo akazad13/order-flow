@@ -48,9 +48,7 @@ var app = builder.Build();
 
 if (usePostgres)
 {
-    // Safe with one instance per service only (ADR 0005).
-    await using var scope = app.Services.CreateAsyncScope();
-    await scope.ServiceProvider.GetRequiredService<NotificationDbContext>().Database.MigrateAsync();
+    await app.MigrateAsync<NotificationDbContext>(); // one copy at a time (spec 013)
 }
 
 app.MapOrderFlowDefaults();

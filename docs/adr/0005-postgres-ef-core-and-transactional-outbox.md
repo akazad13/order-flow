@@ -21,5 +21,5 @@ Order and Inventory state must survive restarts, and "save the change" and "anno
 
 - An order can no longer be saved without OrderPlaced eventually being sent, even if the broker is down at the time.
 - Two code paths for storage. Every Postgres-only behavior gets an integration test (Testcontainers).
-- Applying migrations at startup is safe with one instance per service only; running several would need a separate migration step.
+- Applying migrations at startup is safe with one instance per service only; running several would need a separate migration step. (Amended by [spec 013](../../specs/013-several-copies/spec.md): copies now take turns through a PostgreSQL advisory lock around migrating and seeding, because EF Core's own migration lock did not stop two copies applying the same migration. A separate step remains the better choice once services lose the right to change the schema.)
 - The inbox drops a redelivered message with the same MessageId. Duplicates with new IDs remain spec 004's job.

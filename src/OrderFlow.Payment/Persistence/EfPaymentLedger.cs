@@ -19,7 +19,7 @@ public sealed class EfPaymentLedger(PaymentDbContext db, FakePaymentProvider pro
             return null;
         }
 
-        var outcome = provider.Attempt(orderId, customerId, amount);
+        var outcome = await provider.AttemptAsync(orderId, customerId, amount, cancellationToken);
         switch (outcome)
         {
             case ChargeResult.Succeeded(var charge):

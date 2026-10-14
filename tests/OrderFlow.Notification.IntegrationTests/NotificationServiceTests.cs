@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using OrderFlow.Contracts.Events;
 using OrderFlow.IntegrationTesting;
+using OrderFlow.Notification.Persistence;
 using OrderFlow.Testing;
 using OrderFlow.Notification.Inbox;
 
@@ -102,6 +103,13 @@ public sealed class NotificationServiceTests(InfrastructureFixture infrastructur
 
     private static async Task<List<InboxMessage>> Inbox(HttpClient client, string customerId) =>
         (await client.LoggedInAs(customerId).GetFromJsonAsync<List<InboxMessage>>($"/inbox/{customerId}"))!;
+
+    [Fact]
+    public async Task Three_copies_start_together_on_a_new_database()
+    {
+        // Spec 013, AC-3
+        await StartTogether.ThreeCopiesMigrateOnceAsync<Program, NotificationDbContext>(await SettingsAsync());
+    }
 
     private async Task<Dictionary<string, string?>> SettingsAsync()
     {

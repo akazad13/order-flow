@@ -43,8 +43,15 @@ builder.AddOrderFlowServiceDefaults("order", bus =>
         bus.AddSagaStateMachine<OrderStateMachine, OrderState, OrderStateDefinition>().InMemoryRepository();
     }
 
-    // Spec 005: pushes final statuses to watching clients.
-    bus.AddConsumer<OrderUpdatesConsumer>(consumer => consumer.UseMessageRetry(retry => retry.Intervals(100, 500, 1000)));
+    // Spec 005: pushes final statuses to watching clients. Each copy has a queue of its own,
+    // deleted when the copy stops, so every copy hears every change and tells the browsers
+    // connected to it (spec 013, Q1). The other consumers share one queue per service.
+    bus.AddConsumer<OrderUpdatesConsumer>(consumer => consumer.UseMessageRetry(retry => retry.Intervals(100, 500, 1000)))
+        .Endpoint(endpoint =>
+        {
+            endpoint.InstanceId = Guid.NewGuid().ToString("N")[..12];
+            endpoint.Temporary = true;
+        });
 });
 
 builder.Services.AddSignalR();
@@ -60,9 +67,7 @@ var app = builder.Build();
 
 if (usePostgres)
 {
-    // Safe with one instance per service only (ADR 0005).
-    await using var scope = app.Services.CreateAsyncScope();
-    await scope.ServiceProvider.GetRequiredService<OrderDbContext>().Database.MigrateAsync();
+    await app.MigrateAsync<OrderDbContext>(); // one copy at a time (spec 013)
 }
 
 app.MapOrderFlowDefaults();

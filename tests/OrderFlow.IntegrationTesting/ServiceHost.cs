@@ -23,6 +23,25 @@ public sealed class ServiceHost<TProgram>(IReadOnlyDictionary<string, string?> s
         builder.ConfigureTestServices(services => services.TrustTestTokens());
     }
 
+    /// <summary>
+    /// Starts several copies of the service with the same settings at the same moment (spec 013,
+    /// AC-3). Throws if any copy fails to start; the caller disposes the copies.
+    /// </summary>
+    public static async Task<ServiceHost<TProgram>[]> StartTogetherAsync(IReadOnlyDictionary<string, string?> settings, int count)
+    {
+        var copies = Enumerable.Range(0, count).Select(_ => new ServiceHost<TProgram>(settings)).ToArray();
+        using var go = new ManualResetEventSlim();
+        var starting = copies.Select(copy => Task.Run(() =>
+        {
+            go.Wait();
+            return copy.StartAsync();
+        })).ToArray();
+
+        go.Set();
+        await Task.WhenAll(starting);
+        return copies;
+    }
+
     /// <summary>Starts the host and waits until its health check (including the bus) is healthy.</summary>
     public async Task<HttpClient> StartAsync(TimeSpan? timeout = null)
     {

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "wait": "node scripts/wait-for-stack.mjs",
+    "wait:copies": "node scripts/wait-for-stack.mjs --copies",
     "test": "bddgen && playwright test",
     "report": "playwright show-report"
   },

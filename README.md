@@ -73,6 +73,16 @@ docker compose up -d --build --force-recreate
 cd e2e && npm ci && npx playwright install chromium && npm run wait && npm test
 ```
 
+CI runs E2E with two copies of every service (spec 013). To do the same locally, start the stack with both compose files, and wait for the second copies too:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.copies.yml up -d --build --force-recreate
+```
+
+```bash
+cd e2e && npm run wait:copies && npm test
+```
+
 Then check that no message faulted quietly (CI does this after every E2E run):
 
 ```bash
@@ -93,6 +103,7 @@ A nightly workflow (`.github/workflows/nightly.yml`) repeats E2E ten times and r
 | Inventory (`GET /stock`; `PUT /stock/{sku}` for tests) | http://localhost:5102 |
 | Payment | http://localhost:5103 |
 | Notification (fake inbox) | http://localhost:5104 |
+| Second copies, with `docker-compose.copies.yml` (spec 013) | http://localhost:5111 to 5114 (Order, Inventory, Payment, Notification) |
 | RabbitMQ management | http://localhost:15672 (guest / guest) |
 | PostgreSQL | localhost:5432 (orderflow / orderflow; databases `orders`, `inventory`, `payments`, `notifications`) |
 

@@ -88,6 +88,9 @@ jobs:
     name: End-to-end (docker compose + Playwright)
     needs: [contracts, dotnet, integration, web]
     runs-on: ubuntu-latest
+    # Spec 013: two copies of every service; every docker compose command below uses both files.
+    env:
+      COMPOSE_FILE: docker-compose.yml:docker-compose.copies.yml
     defaults:
       run:
         working-directory: e2e
@@ -102,7 +105,7 @@ jobs:
         working-directory: .
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run wait
+      - run: npm run wait:copies
       - run: npm test
       # Spec 009, AC-6: no message may have faulted quietly, even if every scenario passed.
       # rabbitmqctl gives live counts; the management API's lag by about 5 seconds.

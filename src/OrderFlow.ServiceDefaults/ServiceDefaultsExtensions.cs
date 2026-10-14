@@ -21,6 +21,10 @@ public static class ServiceDefaultsExtensions
         builder.Services.AddHealthChecks();
         builder.Services.AddSingleton(TimeProvider.System);
 
+        // Take requests only once connected to the broker: a copy that accepts a browser's live
+        // connection before its own live-updates queue exists would miss pushes (spec 013).
+        builder.Services.Configure<MassTransitHostOptions>(options => options.WaitUntilStarted = true);
+
         builder.Services.AddMassTransit(bus =>
         {
             // Queues are prefixed per service ("notification-order-placed") so they never

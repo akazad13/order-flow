@@ -140,6 +140,13 @@ public sealed class InventoryServiceTests(InfrastructureFixture infrastructure)
         }
     }
 
+    [Fact]
+    public async Task Three_copies_start_together_on_a_new_database()
+    {
+        // Spec 013, AC-3
+        await StartTogether.ThreeCopiesMigrateOnceAsync<Program, InventoryDbContext>(await SettingsAsync());
+    }
+
     private async Task<Dictionary<string, string?>> SettingsAsync()
     {
         var settings = infrastructure.RabbitSettings(await infrastructure.CreateVirtualHostAsync());

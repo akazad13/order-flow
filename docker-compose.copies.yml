@@ -1,0 +1,29 @@
+# Spec 013: a second copy of every service, for E2E in CI and the stress run.
+#   docker compose -f docker-compose.yml -f docker-compose.copies.yml up -d --build
+# Each second copy answers to its service's name as well as its own, so the web server
+# spreads requests across both copies; RabbitMQ shares each queue between them. The second
+# copies' own ports (5111 to 5114) are for waiting on them and for debugging.
+
+services:
+  order-2:
+    extends: { file: docker-compose.yml, service: order }
+    ports: !override ["5111:8080"]
+    networks: { default: { aliases: [order] } }
+
+  inventory-2:
+    extends: { file: docker-compose.yml, service: inventory }
+    ports: !override ["5112:8080"]
+    networks: { default: { aliases: [inventory] } }
+
+  payment-2:
+    extends: { file: docker-compose.yml, service: payment }
+    ports: !override ["5113:8080"]
+    networks: { default: { aliases: [payment] } }
+
+  notification-2:
+    extends: { file: docker-compose.yml, service: notification }
+    ports: !override ["5114:8080"]
+    networks: { default: { aliases: [notification] } }
+
+  web:
+    depends_on: [order-2, notification-2]

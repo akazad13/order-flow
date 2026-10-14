@@ -67,14 +67,15 @@ What the table says:
 - ADR 0007 and constitution: the gates in CI (spec 009).
 - Follow-ups done since: Payment's decisions ([spec 010](../specs/010-durable-payments/spec.md)) and Notification's inbox ([spec 011](../specs/011-durable-inbox/spec.md)) moved to PostgreSQL. Every service now survives a restart, and a repeat after a restart neither charges nor tells the customer again.
 - Customers log in with Keycloak and see only their own orders and inbox ([spec 012](../specs/012-login-and-ownership/spec.md), ADR 0008).
+- Every service runs as two copies in E2E: live updates reach browsers on either copy, Payment's test switches are shared, and copies starting together migrate one at a time ([spec 013](../specs/013-several-copies/spec.md)).
 
 ## Still open
 
 | Item | Why it matters | Where |
 | --- | --- | --- |
 | Push to GitHub, see CI green, protect `main` with the CI jobs | Every gate here only bites in CI | Spec 000, T15 (deferred) |
-| Review the 24 decisions taken on the user's behalf | Product choices (cancel rules, refund wording, push vs. poll) | `grep -n "\[x\] \*\*Q" specs/*/spec.md` |
+| Review the 37 decisions taken on the user's behalf | Product choices (cancel rules, refund wording, push vs. poll) | `grep -n "\[x\] \*\*Q" specs/*/spec.md` |
 | Breaking-change check between contract versions (e.g. oasdiff) | Lint checks a contract is valid, not that it is compatible with the last one | Spec 009 non-goal |
 | Stock decisions (`reservations`) and finished order trackers (`OrderState`) are never deleted | Kept on purpose: they are what makes a late repeat harmless (spec 004). Removing them needs a retention window longer than any redelivery. Outbox and inbox tables are not a problem: MassTransit deletes delivered messages and its `InboxCleanupService` removes processed ones after the duplicate-detection window | Spec 004 non-goal |
 | Roles (staff, admin), silent token refresh, a production Keycloak (HTTPS, database, secrets) | Logins exist since spec 012, but only for customers, in dev mode | Spec 012 non-goals, ADR 0008 |
-| More than one instance per service | Three concrete breaks: (1) `OrderUpdatesConsumer` shares one queue, so each push reaches only the instance that took the message and watchers on the other instance miss it (needs a SignalR backplane or a queue per instance); (2) the Payment fake provider's test switches are per process (decisions are shared since spec 010); (3) migrations run at startup and would race | ADR 0005, spec 005 |
+| Starting and stopping copies automatically; the web server noticing copies started after it | Two copies of each service run since spec 013, but a fixed number, set in compose | Spec 013 non-goals |

@@ -1,4 +1,4 @@
-import { HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
+import { HttpTransportType, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
 import { accessToken } from '../auth';
 import type { Order } from './clients';
 
@@ -11,7 +11,13 @@ import type { Order } from './clients';
  */
 export function watchOrder(orderId: string, onUpdate: (order: Order) => void, onWatching: () => void): () => void {
   const connection = new HubConnectionBuilder()
-    .withUrl('/order-api/hubs/orders', { accessTokenFactory: () => accessToken() ?? '' })
+    // Straight to a WebSocket, with no negotiate request first: behind a load balancer the two
+    // requests could reach different copies of the Order service (spec 013, AC-4).
+    .withUrl('/order-api/hubs/orders', {
+      accessTokenFactory: () => accessToken() ?? '',
+      skipNegotiation: true,
+      transport: HttpTransportType.WebSockets,
+    })
     .withAutomaticReconnect()
     .configureLogging(LogLevel.Warning)
     .build();

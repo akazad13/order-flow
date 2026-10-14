@@ -234,6 +234,24 @@ namespace OrderFlow.Payment.Persistence.Migrations
                     b.ToTable("payments", (string)null);
                 });
 
+            modelBuilder.Entity("OrderFlow.Payment.Persistence.TestSwitchRow", b =>
+                {
+                    b.Property<string>("CustomerId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("DeclineReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("Stalled")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("CustomerId");
+
+                    b.ToTable("test_switches", (string)null);
+                });
+
             modelBuilder.Entity("MassTransit.EntityFrameworkCoreIntegration.OutboxMessage", b =>
                 {
                     b.HasOne("MassTransit.EntityFrameworkCoreIntegration.OutboxState", null)

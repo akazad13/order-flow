@@ -12,6 +12,9 @@ jobs:
     name: E2E x10 (docker compose + Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # Spec 013: two copies of every service; every docker compose command below uses both files.
+    env:
+      COMPOSE_FILE: docker-compose.yml:docker-compose.copies.yml
     defaults:
       run:
         working-directory: e2e
@@ -26,7 +29,7 @@ jobs:
         working-directory: .
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run wait
+      - run: npm run wait:copies
       - run: npx bddgen && npx playwright test --repeat-each=10
       - name: No faulted or skipped messages
         if: ${{ !cancelled() }}

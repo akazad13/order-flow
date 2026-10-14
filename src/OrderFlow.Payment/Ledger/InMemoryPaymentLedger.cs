@@ -9,50 +9,61 @@ namespace OrderFlow.Payment.Ledger;
 /// </summary>
 public sealed class InMemoryPaymentLedger(FakePaymentProvider provider, TimeProvider clock) : IPaymentLedger
 {
-    private readonly Lock _lock = new();
+    // A semaphore rather than a lock: asking the provider is asynchronous (spec 013).
+    private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly Dictionary<Guid, ChargeResult> _outcomes = new();
     private readonly HashSet<Guid> _voided = [];
     private readonly Dictionary<Guid, Refund> _refunds = new();
 
-    public Task<ChargeResult?> ChargeOnceAsync(Guid orderId, string customerId, decimal amount, CancellationToken cancellationToken)
+    public async Task<ChargeResult?> ChargeOnceAsync(Guid orderId, string customerId, decimal amount, CancellationToken cancellationToken)
     {
-        // One lock, so two copies (or a charge and a cancellation) arriving at the same moment
+        // One gate, so two copies (or a charge and a cancellation) arriving at the same moment
         // cannot both decide.
-        lock (_lock)
+        await _gate.WaitAsync(cancellationToken);
+        try
         {
             if (_outcomes.ContainsKey(orderId) || _voided.Contains(orderId))
             {
-                return Task.FromResult<ChargeResult?>(null);
+                return null;
             }
 
-            var outcome = provider.Attempt(orderId, customerId, amount);
+            var outcome = await provider.AttemptAsync(orderId, customerId, amount, cancellationToken);
             if (outcome is not null)
             {
                 _outcomes[orderId] = outcome;
             }
 
-            return Task.FromResult(outcome);
+            return outcome;
+        }
+        finally
+        {
+            _gate.Release();
         }
     }
 
-    public Task<Refund?> SettleAsync(Guid orderId, string customerId, CancellationToken cancellationToken)
+    public async Task<Refund?> SettleAsync(Guid orderId, string customerId, CancellationToken cancellationToken)
     {
-        lock (_lock)
+        await _gate.WaitAsync(cancellationToken);
+        try
         {
             if (!_outcomes.TryGetValue(orderId, out var outcome))
             {
                 _voided.Add(orderId);
-                return Task.FromResult<Refund?>(null);
+                return null;
             }
 
             if (outcome is not ChargeResult.Succeeded(var charge) || _refunds.ContainsKey(orderId))
             {
-                return Task.FromResult<Refund?>(null);
+                return null;
             }
 
             var refund = new Refund(charge.PaymentId, orderId, charge.Amount, clock.GetUtcNow());
             _refunds[orderId] = refund;
-            return Task.FromResult<Refund?>(refund);
+            return refund;
+        }
+        finally
+        {
+            _gate.Release();
         }
     }
 
@@ -61,18 +72,28 @@ public sealed class InMemoryPaymentLedger(FakePaymentProvider provider, TimeProv
     /// <summary>Charges actually taken (refunded or not).</summary>
     public IReadOnlyList<Charge> ChargesFor(Guid orderId)
     {
-        lock (_lock)
+        _gate.Wait();
+        try
         {
             return _outcomes.TryGetValue(orderId, out var outcome) && outcome is ChargeResult.Succeeded(var charge) ? [charge] : [];
+        }
+        finally
+        {
+            _gate.Release();
         }
     }
 
     /// <summary>Refunds made for the order.</summary>
     public IReadOnlyList<Refund> RefundsFor(Guid orderId)
     {
-        lock (_lock)
+        _gate.Wait();
+        try
         {
             return _refunds.TryGetValue(orderId, out var refund) ? [refund] : [];
+        }
+        finally
+        {
+            _gate.Release();
         }
     }
 }

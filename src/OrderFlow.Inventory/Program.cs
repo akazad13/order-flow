@@ -52,15 +52,15 @@ var app = builder.Build();
 
 if (usePostgres)
 {
-    // Safe with one instance per service only (ADR 0005).
-    await using var scope = app.Services.CreateAsyncScope();
-    var db = scope.ServiceProvider.GetRequiredService<InventoryDbContext>();
-    await db.Database.MigrateAsync();
-    if (!await db.StockItems.AnyAsync())
+    // One copy at a time (spec 013), so copies starting together cannot both seed the catalog.
+    await app.MigrateAsync<InventoryDbContext>(async db =>
     {
-        db.StockItems.AddRange(CatalogSeed.Items.Select(i => new StockItemRow { Sku = i.Sku, Name = i.Name, UnitPrice = i.UnitPrice, Available = i.Available }));
-        await db.SaveChangesAsync();
-    }
+        if (!await db.StockItems.AnyAsync())
+        {
+            db.StockItems.AddRange(CatalogSeed.Items.Select(i => new StockItemRow { Sku = i.Sku, Name = i.Name, UnitPrice = i.UnitPrice, Available = i.Available }));
+            await db.SaveChangesAsync();
+        }
+    });
 }
 
 app.MapOrderFlowDefaults();

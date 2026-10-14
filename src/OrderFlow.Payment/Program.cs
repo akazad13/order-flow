@@ -12,15 +12,17 @@ var builder = WebApplication.CreateBuilder(args);
 // ADR 0005, spec 010: InMemory for component tests and dotnet run; Postgres for compose and integration tests.
 var usePostgres = builder.Configuration["Persistence:Provider"] == "Postgres";
 
-builder.Services.AddSingleton<FakePaymentProvider>();
-
 if (usePostgres)
 {
     builder.Services.AddDbContext<PaymentDbContext>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("Payments")));
+    builder.Services.AddScoped<ITestSwitches, EfTestSwitches>(); // shared by every copy (spec 013)
+    builder.Services.AddScoped<FakePaymentProvider>();
     builder.Services.AddScoped<IPaymentLedger, EfPaymentLedger>();
 }
 else
 {
+    builder.Services.AddSingleton<ITestSwitches, InMemoryTestSwitches>();
+    builder.Services.AddSingleton<FakePaymentProvider>();
     builder.Services.AddSingleton<InMemoryPaymentLedger>();
     builder.Services.AddSingleton<IPaymentLedger>(sp => sp.GetRequiredService<InMemoryPaymentLedger>());
 }
@@ -54,9 +56,7 @@ var app = builder.Build();
 
 if (usePostgres)
 {
-    // Safe with one instance per service only (ADR 0005).
-    await using var scope = app.Services.CreateAsyncScope();
-    await scope.ServiceProvider.GetRequiredService<PaymentDbContext>().Database.MigrateAsync();
+    await app.MigrateAsync<PaymentDbContext>(); // one copy at a time (spec 013)
 }
 
 app.MapOrderFlowDefaults();
@@ -64,21 +64,21 @@ app.MapOrderFlowDefaults();
 // Test-only (contracts/http/payment.openapi.yaml): make a customer's payments fail (spec 003, Q1) or stall (spec 006, Q4).
 if (app.Configuration.GetValue<bool>(TestEndpoints.EnableKey))
 {
-    app.MapPut("/test/declines/{customerId}", (string customerId, DeclineRule rule, FakePaymentProvider provider) =>
+    app.MapPut("/test/declines/{customerId}", async (string customerId, DeclineRule rule, ITestSwitches switches, CancellationToken cancellationToken) =>
     {
         if (string.IsNullOrWhiteSpace(rule.Reason))
         {
             return Results.ValidationProblem(new Dictionary<string, string[]> { ["reason"] = ["Reason is required."] });
         }
 
-        provider.DeclineFor(customerId, rule.Reason);
+        await switches.DeclineAsync(customerId, rule.Reason, cancellationToken);
         return Results.NoContent();
     }).WithName("setDecline");
 
     // Spec 006, Q4: leave a customer's payments undecided, so their orders stay Pending.
-    app.MapPut("/test/stalls/{customerId}", (string customerId, FakePaymentProvider provider) =>
+    app.MapPut("/test/stalls/{customerId}", async (string customerId, ITestSwitches switches, CancellationToken cancellationToken) =>
     {
-        provider.StallFor(customerId);
+        await switches.StallAsync(customerId, cancellationToken);
         return Results.NoContent();
     }).WithName("setStall");
 }

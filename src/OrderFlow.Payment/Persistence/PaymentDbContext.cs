@@ -23,10 +23,12 @@ public sealed class PaymentRow
     public uint Version { get; set; }
 }
 
-/// <summary>Payment decisions and the MassTransit outbox/inbox tables in one database (ADR 0005, spec 010).</summary>
+/// <summary>Payment decisions, the fake provider's test switches (spec 013) and the MassTransit outbox/inbox tables in one database (ADR 0005, spec 010).</summary>
 public sealed class PaymentDbContext(DbContextOptions<PaymentDbContext> options) : DbContext(options)
 {
     public DbSet<PaymentRow> Payments => Set<PaymentRow>();
+
+    public DbSet<TestSwitchRow> TestSwitches => Set<TestSwitchRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -39,6 +41,14 @@ public sealed class PaymentDbContext(DbContextOptions<PaymentDbContext> options)
             payment.Property(p => p.Amount).HasPrecision(12, 2);
             payment.Property(p => p.DeclineReason).HasMaxLength(500);
             payment.Property(p => p.Version).IsRowVersion();
+        });
+
+        modelBuilder.Entity<TestSwitchRow>(testSwitch =>
+        {
+            testSwitch.ToTable("test_switches");
+            testSwitch.HasKey(s => s.CustomerId);
+            testSwitch.Property(s => s.CustomerId).HasMaxLength(200);
+            testSwitch.Property(s => s.DeclineReason).HasMaxLength(500);
         });
 
         modelBuilder.AddInboxStateEntity();
