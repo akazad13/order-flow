@@ -153,6 +153,9 @@ public sealed class HoldStockSteps(InventoryServiceFactory service)
     [When("the order is cancelled")]
     public async Task WhenTheOrderIsCancelled() => await Cancel(_orderId, times: 1);
 
+    [When("the order is cancelled with the old version of the event \\(v1\\)")]
+    public async Task WhenTheOrderIsCancelledWithV1() => await Cancel(_orderId, times: 1, oldVersion: true);
+
     [When("the order is cancelled twice")]
     public async Task WhenTheOrderIsCancelledTwice() => await Cancel(_orderId, times: 2);
 
@@ -184,16 +187,19 @@ public sealed class HoldStockSteps(InventoryServiceFactory service)
         (await service.Harness.Published.Any<StockReleased>()).ShouldBeFalse();
     }
 
-    private async Task Cancel(Guid orderId, int times)
+    /// <summary>Publishes the current version (v2, spec 016), or the old one (v1) still on the broker during a deploy.</summary>
+    private async Task Cancel(Guid orderId, int times, bool oldVersion = false)
     {
+        var cancelled = new OrderCancelled(orderId, "customer-1", CancellationReasons.PaymentDeclined, "Card declined", DateTimeOffset.UtcNow);
         for (var i = 0; i < times; i++)
         {
-            await service.Harness.Bus.Publish(new OrderCancelled(orderId, "customer-1", CancellationReasons.PaymentDeclined, "Card declined", DateTimeOffset.UtcNow));
+            await (oldVersion ? service.Harness.Bus.Publish(cancelled) : service.Harness.Bus.Publish(cancelled.ToV2()));
         }
 
         var consumer = service.Harness.GetConsumerHarness<OrderCancelledConsumer>();
         await Eventually.True(
-            () => consumer.Consumed.Select<OrderCancelled>(m => m.Context.Message.OrderId == orderId).Count() >= times,
+            () => consumer.Consumed.Select<OrderCancelledV2>(m => m.Context.Message.OrderId == orderId).Count()
+                + consumer.Consumed.Select<OrderCancelled>(m => m.Context.Message.OrderId == orderId).Count() >= times,
             $"{times} OrderCancelled consumed");
     }
 

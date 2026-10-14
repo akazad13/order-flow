@@ -1,12 +1,18 @@
-# Spec: specs/006-customer-cancel/spec.md (AC-5), Q4 (test switch)
+# Spec: specs/006-customer-cancel/spec.md (AC-5), Q4 (test switch), specs/016-event-versions/spec.md (AC-3, AC-4)
 # Runs in: tests/OrderFlow.Payment.ComponentTests (Payment service + in-memory bus)
-@component @spec-006
+@component @spec-006 @spec-016
 Feature: Settle the payment of a cancelled order (Payment service)
   A charge already taken is refunded once; a payment not yet decided is never taken.
 
   Scenario: A charged order that is cancelled is refunded
     When stock is reserved for an order by customer "customer-1" with a total of 37.00
     And that order is cancelled at the customer's request
+    Then PaymentRefunded is published for that order with an amount of 37.00
+    And the customer is refunded 37.00 exactly once for that order
+
+  Scenario: A cancellation published as the old version (v1) still refunds
+    When stock is reserved for an order by customer "customer-1" with a total of 37.00
+    And that order is cancelled at the customer's request, with the old version of the event (v1)
     Then PaymentRefunded is published for that order with an amount of 37.00
     And the customer is refunded 37.00 exactly once for that order
 

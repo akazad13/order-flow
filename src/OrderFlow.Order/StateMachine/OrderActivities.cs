@@ -85,13 +85,15 @@ public sealed class CancelAtCustomerRequestActivity(IOrderRepository orders, Tim
 {
     public const string Detail = "Cancelled at the customer's request.";
 
-    /// <summary>Staff cancel on the customer's behalf: same reason, and the detail says who (spec 015, R-1).</summary>
+    /// <summary>Staff cancel on the customer's behalf (spec 015); since spec 016 with a reason of its own.</summary>
     public const string StaffDetail = "Cancelled by our support team at the customer's request.";
 
     public async Task Execute(BehaviorContext<OrderState, OrderCancellationRequested> context, IBehavior<OrderState, OrderCancellationRequested> next)
     {
-        var detail = context.Message.RequestedBy == CancellationRequesters.Staff ? StaffDetail : Detail;
-        await OrderCancellation.Cancel(context, orders, clock, context.Message.OrderId, CancellationReasons.CustomerRequested, detail);
+        var (reason, detail) = context.Message.RequestedBy == CancellationRequesters.Staff
+            ? (CancellationReasons.StaffRequested, StaffDetail)
+            : (CancellationReasons.CustomerRequested, Detail);
+        await OrderCancellation.Cancel(context, orders, clock, context.Message.OrderId, reason, detail);
         await next.Execute(context);
     }
 
@@ -111,6 +113,8 @@ internal static class OrderCancellation
             ?? throw new InvalidOperationException($"Order {orderId} not found.");
 
         order.Cancel(reason, detail);
-        await context.Publish(new OrderCancelled(order.Id, order.CustomerId, reason, detail, clock.GetUtcNow()));
+
+        // Version 2 only, never both (spec 016, R-2): readers of both would act twice.
+        await context.Publish(new OrderCancelledV2(order.Id, order.CustomerId, reason, detail, clock.GetUtcNow()));
     }
 }

@@ -1,6 +1,6 @@
-# Spec: specs/015-staff-and-token-refresh/spec.md (AC-1, AC-2, AC-3, AC-4, R-1, R-2)
+# Spec: specs/015-staff-and-token-refresh/spec.md (AC-1, AC-2, AC-3, AC-4, R-1, R-2), specs/016-event-versions/spec.md (AC-1, AC-2)
 # Runs in: tests/OrderFlow.Order.ComponentTests (Order service + state machine + in-memory bus; logins signed by a test key)
-@component @spec-015
+@component @spec-015 @spec-016
 Feature: Staff support customers' orders (Order service)
   Staff, a role the identity server gives, can read, watch and cancel any customer's order.
   They act for the customer: the order stays the customer's, and a cancellation is at their request.
@@ -15,8 +15,8 @@ Feature: Staff support customers' orders (Order service)
   Scenario: Staff cancel a pending order on the customer's behalf
     When staff member "sam" asks to cancel that order
     Then the request is accepted
-    And the order is cancelled with reason "CustomerRequested" and detail "Cancelled by our support team at the customer's request."
-    And OrderCancelled is published for that order with reason "CustomerRequested"
+    And the order is cancelled with reason "StaffRequested" and detail "Cancelled by our support team at the customer's request."
+    And OrderCancelled is published for that order with reason "StaffRequested"
 
   Scenario: Too late for staff too, once the order is confirmed
     When stock is reserved for that order with a total of 37.00

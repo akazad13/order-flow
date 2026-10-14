@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, it } from 'node:test';
-import { asyncapiBreaks, checkContracts, httpBreaks, majorRaised, schemaBreaks, versionProblems } from './check-contracts.mjs';
+import { asyncapiBreaks, checkContracts, httpBreaks, majorRaised, readersFollow, schemaBreaks, versionProblems } from './check-contracts.mjs';
 
 const PAYLOAD = {
   type: 'object',
@@ -100,6 +100,37 @@ describe('asyncapiBreaks (AC-2)', () => {
     after.channels.stockReserved = { address: 'stock-reserved', messages: {} };
     after.operations.receiveStockReserved = { action: 'receive' };
     assert.deepEqual(asyncapiBreaks(doc, after), ['OrderPlaced.note: removed']);
+  });
+});
+
+describe('readersFollow (spec 016, AC-5)', () => {
+  const operations = (entries) => ({ operations: Object.fromEntries(entries.map(([key, action]) => [key, { action }])) });
+
+  it('passes while only the old version is published, and once every reader reads the new one', () => {
+    const readers = [['inventoryReceivesThingHappened', 'receive'], ['paymentReceivesThingHappened', 'receive']];
+    assert.deepEqual(readersFollow(operations([['publishThingHappened', 'send'], ...readers])), []);
+    assert.deepEqual(
+      readersFollow(operations([['publishThingHappenedV2', 'send'], ...readers, ['inventoryReceivesThingHappenedV2', 'receive'], ['paymentReceivesThingHappenedV2', 'receive']])),
+      [],
+    );
+  });
+
+  it('fails when a reader of the old version would miss the new one', () => {
+    const doc = operations([
+      ['publishThingHappenedV2', 'send'],
+      ['inventoryReceivesThingHappened', 'receive'],
+      ['paymentReceivesThingHappened', 'receive'],
+      ['inventoryReceivesThingHappenedV2', 'receive'],
+    ]);
+    assert.deepEqual(readersFollow(doc), [
+      'ThingHappenedV2 is published, but payment reads ThingHappened and not ThingHappenedV2: it would miss every ThingHappened from now on (readers move first, ADR 0010)',
+    ]);
+  });
+
+  it('compares a version with the one before it', () => {
+    const doc = operations([['publishThingHappenedV3', 'send'], ['inventoryReceivesThingHappenedV2', 'receive'], ['inventoryReceivesThingHappened', 'receive']]);
+    assert.equal(readersFollow(doc).length, 1);
+    assert.match(readersFollow(doc)[0], /inventory reads ThingHappenedV2 and not ThingHappenedV3/);
   });
 });
 
@@ -300,6 +331,17 @@ describe('checkContracts against a git repository (AC-4, AC-5)', () => {
     // 1.0.1); from the merge base it changed the title with a new patch version: fine.
     const result = await checkContracts({ root, base: 'HEAD', head: 'feature', oasdiff: noOasdiff });
     assert.deepEqual(result.problems, []);
+  });
+
+  it('fails a published event version that a reader of the previous version does not read (spec 016)', async () => {
+    repo();
+    write('contracts/events/more.asyncapi.yaml', `asyncapi: 3.1.0
+info: { title: More events, version: 1.0.0 }
+operations:
+  publishThingHappenedV2: { action: send }
+  paymentReceivesThingHappened: { action: receive }
+`);
+    assert.match((await checkContracts({ root, oasdiff: noOasdiff })).problems.join('\n'), /payment reads ThingHappened and not ThingHappenedV2/);
   });
 
   it('fails a removed contract, and passes a new one', async () => {

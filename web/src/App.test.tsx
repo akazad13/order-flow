@@ -153,7 +153,7 @@ describe('App', () => {
 
     const order = screen.getByRole('region', { name: 'Order' });
     expect(within(order).getByText('Cancelled')).toBeInTheDocument();
-    expect(within(order).getByText('Reason: cancelled at your request')).toBeInTheDocument();
+    expect(within(order).getByText('Reason: you cancelled it')).toBeInTheDocument();
     expect(screen.queryByText('Cancelling...')).not.toBeInTheDocument();
   });
 

@@ -133,19 +133,19 @@ public sealed class OrderServiceTests(InfrastructureFixture infrastructure, ITes
         // Settled: every order final and nothing left to send, so no further event can appear.
         await WaitUntil(host, db => db.Set<OrderState>().CountAsync(s => ids.Contains(s.CorrelationId) && (s.CurrentState == "Confirmed" || s.CurrentState == "Cancelled")), ids.Count, "every order final");
         await WaitUntil(host, async db => await db.Set<OutboxMessage>().AnyAsync() ? 0 : 1, 1, "the outbox drained");
-        await testBus.WaitForCount<object>(m => (m is OrderConfirmed c && ids.Contains(c.OrderId)) || (m is OrderCancelled x && ids.Contains(x.OrderId)), ids.Count);
+        await testBus.WaitForCount<object>(m => (m is OrderConfirmed c && ids.Contains(c.OrderId)) || (m is OrderCancelledV2 x && ids.Contains(x.OrderId)), ids.Count);
 
         foreach (var id in ids)
         {
             var confirmed = testBus.Received<OrderConfirmed>().Count(m => m.OrderId == id);
-            var cancelled = testBus.Received<OrderCancelled>().Count(m => m.OrderId == id);
+            var cancelled = testBus.Received<OrderCancelledV2>().Count(m => m.OrderId == id);
             (confirmed + cancelled).ShouldBe(1, $"order {id}: {confirmed} confirmed, {cancelled} cancelled");
 
             var order = await client.GetFromJsonAsync<OrderResponse>($"/orders/{id}");
             order!.Status.ShouldBe(confirmed == 1 ? "Confirmed" : "Cancelled");
         }
 
-        output.WriteLine($"Confirmed first: {testBus.Received<OrderConfirmed>().Count(m => ids.Contains(m.OrderId))}; cancelled first: {testBus.Received<OrderCancelled>().Count(m => ids.Contains(m.OrderId))}.");
+        output.WriteLine($"Confirmed first: {testBus.Received<OrderConfirmed>().Count(m => ids.Contains(m.OrderId))}; cancelled first: {testBus.Received<OrderCancelledV2>().Count(m => ids.Contains(m.OrderId))}.");
     }
 
     /// <summary>Polls a count in the service's database until it reaches the target.</summary>

@@ -1,6 +1,6 @@
-# Spec: specs/003-payment-failure/spec.md (AC-3, R-1, R-2), specs/006-customer-cancel/spec.md (AC-4)
+# Spec: specs/003-payment-failure/spec.md (AC-3, R-1, R-2), specs/006-customer-cancel/spec.md (AC-4), specs/016-event-versions/spec.md (AC-3, AC-4)
 # Runs in: tests/OrderFlow.Inventory.ComponentTests (Inventory service + in-memory bus)
-@component @spec-003
+@component @spec-003 @spec-016
 Feature: Release stock for a cancelled order (Inventory service)
   Stock held for an order goes back on sale when the order is cancelled, exactly once.
 
@@ -12,6 +12,14 @@ Feature: Release stock for a cancelled order (Inventory service)
   Scenario: Held stock is released when the order is cancelled
     Given an order holds 3 of "TEST-A"
     When the order is cancelled
+    Then StockReleased is published for that order with 3 of "TEST-A"
+    And the available stock is:
+      | sku    | available |
+      | TEST-A | 10        |
+
+  Scenario: A cancellation published as the old version (v1) still releases the stock
+    Given an order holds 3 of "TEST-A"
+    When the order is cancelled with the old version of the event (v1)
     Then StockReleased is published for that order with 3 of "TEST-A"
     And the available stock is:
       | sku    | available |

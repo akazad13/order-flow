@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OrderFlow Order API
-  version: 1.1.0
+  version: 2.0.0
   description: |
     Customer-facing API for placing, reading and cancelling orders. Specs 000 to 003, 006 and 012.
     Status changes are pushed by the hub in contracts/realtime (spec 005).
@@ -86,7 +86,7 @@ paths:
         Spec 006. A Pending order: the request is recorded and the order service decides
         (202); the outcome is pushed to watchers (spec 005). If the order is confirmed before
         the request is handled, it stays Confirmed. Repeating the request is harmless.
-        Staff may cancel any order (spec 015): the reason stays CustomerRequested, and the
+        Staff may cancel any order (spec 015): the reason is StaffRequested (spec 016), and the
         detail says the support team cancelled it at the customer's request.
       parameters:
         - name: orderId
@@ -186,7 +186,7 @@ components:
       properties:
         reason:
           type: string
-          enum: [OutOfStock, PaymentDeclined, CustomerRequested]
+          enum: [OutOfStock, PaymentDeclined, CustomerRequested, StaffRequested]
         detail:
           type: string
           examples: [Only 1 of SKU-002 available, 2 requested.]

@@ -21,7 +21,7 @@ const pending: Order = {
 const cancelledBySupport: Order = {
   ...pending,
   status: 'Cancelled',
-  cancellation: { reason: 'CustomerRequested', detail: 'Cancelled by our support team at the customer\'s request.' },
+  cancellation: { reason: 'StaffRequested', detail: 'Cancelled by our support team at the customer\'s request.' },
 };
 
 async function lookUp(orderId: string) {
@@ -67,7 +67,7 @@ describe('StaffLookup (spec 015, AC-5)', () => {
     await act(async () => onUpdate(cancelledBySupport));
     const order = screen.getByRole('group', { name: 'Looked-up order' });
     expect(within(order).getByText('Cancelled')).toBeInTheDocument();
-    expect(within(order).getByText("Reason: at the customer's request")).toBeInTheDocument();
+    expect(within(order).getByText("Reason: by our support team, at the customer's request")).toBeInTheDocument();
     expect(within(order).getByText("Cancelled by our support team at the customer's request.")).toBeInTheDocument();
   });
 

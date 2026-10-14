@@ -26,7 +26,7 @@ Each acceptance criterion maps to at least one Gherkin scenario under `features/
 
 ## IV. Events are facts
 
-Events are named in the past tense, are immutable once published, and are versioned (`orderflow:<name>:v1`). A breaking change is a new version, not an edit. Consumers must be idempotent.
+Events are named in the past tense, are immutable once published, and are versioned (`orderflow:<name>:v1`). A breaking change is a new version, not an edit: readers move first, then the publisher switches, then the old version is retired (ADR 0010). Consumers must be idempotent.
 
 ## V. Deterministic tests
 

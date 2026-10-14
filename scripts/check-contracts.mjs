@@ -133,6 +133,40 @@ export function asyncapiBreaks(before, after) {
   return breaks;
 }
 
+/**
+ * Readers move first (spec 016, R-3; ADR 0010). By convention an event's versions are messages
+ * named Name, NameV2, NameV3..., published by operations "publish<Message>" and read by operations
+ * "<service>Receives<Message>". While a version is published, every service that reads the
+ * previous version must read it too, or it would miss every such event from then on.
+ */
+export function readersFollow(doc) {
+  const readers = new Map();
+  const published = new Set();
+  for (const [key, operation] of Object.entries(doc?.operations ?? {})) {
+    const receive = /^([a-z]\w*?)Receives([A-Z]\w*)$/.exec(key);
+    const send = /^publish([A-Z]\w*)$/.exec(key);
+    if (receive && operation?.action === 'receive') {
+      if (!readers.has(receive[2])) readers.set(receive[2], new Set());
+      readers.get(receive[2]).add(receive[1]);
+    } else if (send && operation?.action === 'send') {
+      published.add(send[1]);
+    }
+  }
+
+  const problems = [];
+  for (const message of published) {
+    const version = /^([A-Z]\w*?)V(\d+)$/.exec(message);
+    if (!version || Number(version[2]) < 2) continue;
+    const previous = Number(version[2]) === 2 ? version[1] : `${version[1]}V${Number(version[2]) - 1}`;
+    for (const service of readers.get(previous) ?? []) {
+      if (!readers.get(message)?.has(service)) {
+        problems.push(`${message} is published, but ${service} reads ${previous} and not ${message}: it would miss every ${version[1]} from now on (readers move first, ADR 0010)`);
+      }
+    }
+  }
+  return problems;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Versions (R-1): semantic versioning; below 1.0.0 the minor version counts as the major one.
 
@@ -239,6 +273,13 @@ export async function checkContracts({ root, base = 'HEAD', head, oasdiff = runO
     const problems = [];
     const notes = [];
     const headFiles = new Set(contractFiles(path.join(work, 'head')));
+
+    // A property of the contract as it is now, whatever it was before (spec 016, AC-5).
+    for (const file of headFiles) {
+      if (!PUBLISHED_EVENTS.test(file)) continue;
+      const found = readersFollow(parseYaml(readFileSync(path.join(work, 'head', file), 'utf8')));
+      if (found.length) problems.push(`${file}:`, ...found.map((p) => `  ${p}`));
+    }
     for (const file of contractFiles(path.join(work, 'base'))) {
       if (!headFiles.has(file)) {
         problems.push(`${file}: removed, which breaks every client and service that uses it`);

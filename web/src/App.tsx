@@ -17,7 +17,8 @@ function newer(current: Order | null, next: Order): Order {
 const CANCELLATION_TEXT: Record<NonNullable<Order['cancellation']>['reason'], string> = {
   OutOfStock: 'some items are out of stock',
   PaymentDeclined: 'your payment was declined',
-  CustomerRequested: 'cancelled at your request', // by you, or by our support team for you (spec 015)
+  CustomerRequested: 'you cancelled it',
+  StaffRequested: 'our support team cancelled it at your request', // spec 016
 };
 
 type CancelState = 'idle' | 'cancelling' | 'too-late';

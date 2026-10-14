@@ -7,7 +7,8 @@ import { watchOrder } from './api/live';
 const REASON_TEXT: Record<NonNullable<Order['cancellation']>['reason'], string> = {
   OutOfStock: 'some items were out of stock',
   PaymentDeclined: 'the payment was declined',
-  CustomerRequested: "at the customer's request",
+  CustomerRequested: 'the customer cancelled it',
+  StaffRequested: "by our support team, at the customer's request", // spec 016
 };
 
 type Lookup = { state: 'idle' } | { state: 'not-found' } | { state: 'found'; order: Order };

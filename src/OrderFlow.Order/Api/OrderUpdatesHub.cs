@@ -42,11 +42,13 @@ public sealed class OrderUpdatesHub(IOrderRepository orders) : Hub<IOrderUpdates
 /// transaction commits, so the order read here already has the new status.
 /// </summary>
 public sealed class OrderUpdatesConsumer(IOrderRepository orders, IHubContext<OrderUpdatesHub, IOrderUpdatesClient> hub)
-    : IConsumer<OrderConfirmed>, IConsumer<OrderCancelled>
+    : IConsumer<OrderConfirmed>, IConsumer<OrderCancelledV2>
 {
     public Task Consume(ConsumeContext<OrderConfirmed> context) => Push(context.Message.OrderId, context.CancellationToken);
 
-    public Task Consume(ConsumeContext<OrderCancelled> context) => Push(context.Message.OrderId, context.CancellationToken);
+    // Only v2 (spec 016): a push is a notice, not a record (spec 013, R-2), so a v1 still on its way
+    // from a copy running the old code during a deploy can be missed; the page reads the order again.
+    public Task Consume(ConsumeContext<OrderCancelledV2> context) => Push(context.Message.OrderId, context.CancellationToken);
 
     private async Task Push(Guid orderId, CancellationToken cancellationToken)
     {

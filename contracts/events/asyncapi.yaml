@@ -1,7 +1,7 @@
 asyncapi: 3.1.0
 info:
   title: OrderFlow events
-  version: 1.1.0
+  version: 2.0.0
   description: |
     Events exchanged between OrderFlow services over RabbitMQ (MassTransit v8).
     MassTransit wraps each payload in an envelope; the schemas below describe the
@@ -66,10 +66,18 @@ channels:
       $ref: '#/components/channelBindings/fanout'
   orderCancelled:
     address: order-cancelled
-    description: The order is Cancelled (final), with a reason.
+    description: The order is Cancelled (final), with a reason. v1, no longer published (spec 016); still read until it is retired (ADR 0010).
     messages:
       OrderCancelled:
         $ref: '#/components/messages/OrderCancelled'
+    bindings:
+      $ref: '#/components/channelBindings/fanout'
+  orderCancelledV2:
+    address: order-cancelled-v2
+    description: The order is Cancelled (final), with a reason. v2 (spec 016) adds the reason StaffRequested.
+    messages:
+      OrderCancelledV2:
+        $ref: '#/components/messages/OrderCancelledV2'
     bindings:
       $ref: '#/components/channelBindings/fanout'
   orderCancellationRequested:
@@ -202,34 +210,62 @@ operations:
       $ref: '#/channels/paymentFailed'
     messages:
       - $ref: '#/channels/paymentFailed/messages/PaymentFailed'
-  publishOrderCancelled:
+  publishOrderCancelledV2:
     action: send
-    summary: Order service announces a cancelled order.
+    summary: Order service announces a cancelled order (v2 since spec 016; v1 is no longer published).
     channel:
-      $ref: '#/channels/orderCancelled'
+      $ref: '#/channels/orderCancelledV2'
     messages:
-      - $ref: '#/channels/orderCancelled/messages/OrderCancelled'
+      - $ref: '#/channels/orderCancelledV2/messages/OrderCancelledV2'
   inventoryReceivesOrderCancelled:
     action: receive
-    summary: Inventory releases whatever the order held (no-op if nothing).
+    summary: (v1, until it is retired; ADR 0010) Inventory releases whatever the order held (no-op if nothing).
     channel:
       $ref: '#/channels/orderCancelled'
     messages:
       - $ref: '#/channels/orderCancelled/messages/OrderCancelled'
   notificationReceivesOrderCancelled:
     action: receive
-    summary: Notification tells the customer why the order was cancelled.
+    summary: (v1, until it is retired; ADR 0010) Notification tells the customer why the order was cancelled.
     channel:
       $ref: '#/channels/orderCancelled'
     messages:
       - $ref: '#/channels/orderCancelled/messages/OrderCancelled'
   paymentReceivesOrderCancelled:
     action: receive
-    summary: Payment refunds a charge for the order once, or voids a payment not yet decided (spec 006).
+    summary: (v1, until it is retired; ADR 0010) Payment refunds a charge for the order once, or voids a payment not yet decided (spec 006).
     channel:
       $ref: '#/channels/orderCancelled'
     messages:
       - $ref: '#/channels/orderCancelled/messages/OrderCancelled'
+  inventoryReceivesOrderCancelledV2:
+    action: receive
+    summary: Inventory releases whatever the order held, as for v1 (spec 016).
+    channel:
+      $ref: '#/channels/orderCancelledV2'
+    messages:
+      - $ref: '#/channels/orderCancelledV2/messages/OrderCancelledV2'
+  notificationReceivesOrderCancelledV2:
+    action: receive
+    summary: Notification tells the customer why, in the words for each reason, as for v1 (spec 016).
+    channel:
+      $ref: '#/channels/orderCancelledV2'
+    messages:
+      - $ref: '#/channels/orderCancelledV2/messages/OrderCancelledV2'
+  paymentReceivesOrderCancelledV2:
+    action: receive
+    summary: Payment refunds or voids, as for v1 (spec 016).
+    channel:
+      $ref: '#/channels/orderCancelledV2'
+    messages:
+      - $ref: '#/channels/orderCancelledV2/messages/OrderCancelledV2'
+  orderReceivesOrderCancelledV2:
+    action: receive
+    summary: The Order service pushes the final order to its watchers (spec 005; documented since spec 016).
+    channel:
+      $ref: '#/channels/orderCancelledV2'
+    messages:
+      - $ref: '#/channels/orderCancelledV2/messages/OrderCancelledV2'
   publishOrderCancellationRequested:
     action: send
     summary: The Order API records a customer's request to cancel, or staff's on their behalf (spec 015).
@@ -326,9 +362,15 @@ components:
     OrderCancelled:
       name: OrderCancelled
       title: Order cancelled (v1)
-      summary: The order is Cancelled (final), with a reason.
+      summary: The order is Cancelled (final), with a reason. No longer published (spec 016).
       payload:
         $ref: './schemas/order-cancelled.v1.json'
+    OrderCancelledV2:
+      name: OrderCancelledV2
+      title: Order cancelled (v2)
+      summary: The order is Cancelled (final), with a reason, which may be StaffRequested (spec 016).
+      payload:
+        $ref: './schemas/order-cancelled.v2.json'
     StockReleased:
       name: StockReleased
       title: Stock released (v1)

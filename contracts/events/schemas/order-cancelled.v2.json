@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orderflow.example.com/events/order-cancelled.v2.json",
+  "title": "OrderCancelled v2",
+  "description": "The `message` body of the MassTransit envelope published on the order-cancelled-v2 exchange. The order is final (specs 002, 003, 006). Replaces v1 (spec 016, ADR 0010): the reason may be StaffRequested.",
+  "type": "object",
+  "required": [
+    "orderId",
+    "customerId",
+    "reason",
+    "detail",
+    "cancelledAt"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "orderId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "customerId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "OutOfStock",
+        "PaymentDeclined",
+        "CustomerRequested",
+        "StaffRequested"
+      ],
+      "description": "Why the order was cancelled. StaffRequested: our support team cancelled it at the customer's request (spec 016). A new reason needs a new version of this event (constitution IV, spec 014)."
+    },
+    "detail": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable detail, e.g. which items were short."
+    },
+    "cancelledAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

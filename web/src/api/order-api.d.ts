@@ -58,6 +58,8 @@ export interface paths {
          * @description Spec 006. A Pending order: the request is recorded and the order service decides
          *     (202); the outcome is pushed to watchers (spec 005). If the order is confirmed before
          *     the request is handled, it stays Confirmed. Repeating the request is harmless.
+         *     Staff may cancel any order (spec 015): the reason is StaffRequested (spec 016), and the
+         *     detail says the support team cancelled it at the customer's request.
          */
         post: operations["cancelOrder"];
         delete?: never;
@@ -103,7 +105,7 @@ export interface components {
         };
         Cancellation: {
             /** @enum {string} */
-            reason: "OutOfStock" | "PaymentDeclined" | "CustomerRequested";
+            reason: "OutOfStock" | "PaymentDeclined" | "CustomerRequested" | "StaffRequested";
             /**
              * @example Only 1 of SKU-002 available
              * @example 2 requested.
@@ -203,7 +205,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description No order with that ID for the logged-in customer. */
+            /** @description No order with that ID for the logged-in customer (any order, for staff). */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -248,7 +250,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description No order with that ID for the logged-in customer. */
+            /** @description No order with that ID for the logged-in customer (any order, for staff). */
             404: {
                 headers: {
                     [name: string]: unknown;

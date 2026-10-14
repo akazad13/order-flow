@@ -68,7 +68,7 @@ public sealed class OrderLifecycleSteps(OrderServiceFactory service)
 
     [Then("OrderCancelled is published once for that order")]
     public void ThenOrderCancelledIsPublishedOnce() =>
-        service.Harness.Published.Select<OrderCancelled>(m => m.Context.Message.OrderId == _placed!.OrderId).Count().ShouldBe(1);
+        service.Harness.Published.Select<OrderCancelledV2>(m => m.Context.Message.OrderId == _placed!.OrderId).Count().ShouldBe(1);
 
     [Then("none of the repeats is treated as an error")]
     public void ThenNoRepeatIsAnError()
@@ -218,11 +218,14 @@ public sealed class OrderLifecycleSteps(OrderServiceFactory service)
     [Then("OrderCancelled is published for that order with reason {string}")]
     public async Task ThenOrderCancelledIsPublished(string reason)
     {
-        await Eventually.True(() => service.Harness.Published.Select<OrderCancelled>(m => m.Context.Message.OrderId == _placed!.OrderId).Any(), "OrderCancelled (Published)");
-        var cancelled = service.Harness.Published.Select<OrderCancelled>(m => m.Context.Message.OrderId == _placed!.OrderId).Single().Context.Message;
+        await Eventually.True(() => service.Harness.Published.Select<OrderCancelledV2>(m => m.Context.Message.OrderId == _placed!.OrderId).Any(), "OrderCancelled v2 (Published)");
+        var cancelled = service.Harness.Published.Select<OrderCancelledV2>(m => m.Context.Message.OrderId == _placed!.OrderId).Single().Context.Message;
 
         cancelled.Reason.ShouldBe(reason);
         cancelled.CustomerId.ShouldBe(_placed!.CustomerId);
+
+        // Spec 016, AC-2 and R-2: the current version only, never both.
+        (await service.Harness.Published.Any<OrderCancelled>()).ShouldBeFalse("v1 is no longer published");
     }
 
     private static decimal Money(string value) => decimal.Parse(value, CultureInfo.InvariantCulture);
