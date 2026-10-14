@@ -46,6 +46,71 @@ public sealed class OrderLifecycleSteps(OrderServiceFactory service)
         (await Saga.Consumed.Any<StockReserved>(m => m.Context.Message.OrderId == _placed.OrderId)).ShouldBeTrue();
     }
 
+    [When("every event for that order arrives again")]
+    public async Task WhenEveryEventArrivesAgain()
+    {
+        var id = _placed!.OrderId;
+
+        // Real repeats: the same messages again, with new message IDs.
+        await Repeat<OrderPlaced>(id);
+        await Repeat<StockReserved>(id);
+        await Repeat<PaymentSucceeded>(id);
+        await Repeat<PaymentFailed>(id);
+    }
+
+    [Then("OrderConfirmed is published once for that order")]
+    public void ThenOrderConfirmedIsPublishedOnce() =>
+        service.Harness.Published.Select<OrderConfirmed>(m => m.Context.Message.OrderId == _placed!.OrderId).Count().ShouldBe(1);
+
+    [Then("OrderCancelled is published once for that order")]
+    public void ThenOrderCancelledIsPublishedOnce() =>
+        service.Harness.Published.Select<OrderCancelled>(m => m.Context.Message.OrderId == _placed!.OrderId).Count().ShouldBe(1);
+
+    [Then("none of the repeats is treated as an error")]
+    public void ThenNoRepeatIsAnError()
+    {
+        var id = _placed!.OrderId;
+        Failed<OrderPlaced>(m => m.OrderId == id).ShouldBe(0, "failed OrderPlaced");
+        Failed<StockReserved>(m => m.OrderId == id).ShouldBe(0, "failed StockReserved");
+        Failed<PaymentSucceeded>(m => m.OrderId == id).ShouldBe(0, "failed PaymentSucceeded");
+        Failed<PaymentFailed>(m => m.OrderId == id).ShouldBe(0, "failed PaymentFailed");
+    }
+
+    /// <summary>
+    /// Publishes the first copy received again, and waits until the bus has handled it. Uses the
+    /// bus-level harness: the state machine harness does not record events it ignores.
+    /// </summary>
+    private async Task Repeat<T>(Guid orderId) where T : class
+    {
+        var received = service.Harness.Consumed.Select<T>(m => OrderIdOf(m.Context.Message) == orderId).ToList();
+        if (received.Count == 0)
+        {
+            return;
+        }
+
+        await service.Harness.Bus.Publish(received[0].Context.Message);
+
+        // Poll rather than SelectAsync, which stops as soon as the harness looks idle.
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (service.Harness.Consumed.Select<T>(m => OrderIdOf(m.Context.Message) == orderId).Count() <= received.Count)
+        {
+            DateTime.UtcNow.ShouldBeLessThan(deadline, $"repeated {typeof(T).Name} was never handled");
+            await Task.Delay(20);
+        }
+    }
+
+    private int Failed<T>(Func<T, bool> match) where T : class =>
+        service.Harness.Consumed.Select<T>(m => match(m.Context.Message)).Count(m => m.Exception is not null);
+
+    private static Guid OrderIdOf(object message) => message switch
+    {
+        OrderPlaced m => m.OrderId,
+        StockReserved m => m.OrderId,
+        PaymentSucceeded m => m.OrderId,
+        PaymentFailed m => m.OrderId,
+        _ => Guid.Empty,
+    };
+
     [When("payment succeeds for that order")]
     public async Task WhenPaymentSucceeds()
     {

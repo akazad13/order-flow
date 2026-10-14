@@ -13,7 +13,11 @@ public abstract record ChargeResult
 
 public interface IPaymentGateway
 {
-    ChargeResult Charge(Guid orderId, string customerId, decimal amount);
+    /// <summary>
+    /// Decides an order's payment once (spec 004, R-2): the first call charges or declines;
+    /// a repeat for the same order returns null and charges nothing.
+    /// </summary>
+    ChargeResult? ChargeOnce(Guid orderId, string customerId, decimal amount);
 }
 
 /// <summary>
@@ -24,22 +28,44 @@ public interface IPaymentGateway
 /// </summary>
 public sealed class FakePaymentGateway(TimeProvider clock) : IPaymentGateway
 {
-    private readonly ConcurrentQueue<Charge> _charges = new();
     private readonly ConcurrentDictionary<string, string> _declines = new();
+    private readonly Lock _lock = new();
+    private readonly Dictionary<Guid, ChargeResult> _outcomes = new();
 
-    public ChargeResult Charge(Guid orderId, string customerId, decimal amount)
+    public ChargeResult? ChargeOnce(Guid orderId, string customerId, decimal amount)
+    {
+        // One lock, so two copies arriving at the same moment cannot both decide.
+        lock (_lock)
+        {
+            if (_outcomes.ContainsKey(orderId))
+            {
+                return null;
+            }
+
+            var outcome = Decide(orderId, customerId, amount);
+            _outcomes[orderId] = outcome;
+            return outcome;
+        }
+    }
+
+    public void DeclineFor(string customerId, string reason) => _declines[customerId] = reason;
+
+    private ChargeResult Decide(Guid orderId, string customerId, decimal amount)
     {
         if (_declines.TryGetValue(customerId, out var reason))
         {
             return new ChargeResult.Declined(reason);
         }
 
-        var charge = new Charge(Guid.NewGuid(), orderId, amount, clock.GetUtcNow());
-        _charges.Enqueue(charge);
-        return new ChargeResult.Succeeded(charge);
+        return new ChargeResult.Succeeded(new Charge(Guid.NewGuid(), orderId, amount, clock.GetUtcNow()));
     }
 
-    public void DeclineFor(string customerId, string reason) => _declines[customerId] = reason;
-
-    public IReadOnlyList<Charge> ChargesFor(Guid orderId) => _charges.Where(c => c.OrderId == orderId).ToList();
+    /// <summary>Charges actually taken: the outcome stored for the order, if it was a charge.</summary>
+    public IReadOnlyList<Charge> ChargesFor(Guid orderId)
+    {
+        lock (_lock)
+        {
+            return _outcomes.TryGetValue(orderId, out var outcome) && outcome is ChargeResult.Succeeded(var charge) ? [charge] : [];
+        }
+    }
 }

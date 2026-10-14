@@ -131,4 +131,42 @@ public class CatalogTests
 
         catalog.Get("TEST-A")!.Available.ShouldBe(10);
     }
+
+    [Fact]
+    public void A_repeated_order_is_held_once()
+    {
+        var catalog = NewCatalog();
+        var orderId = Guid.NewGuid();
+        catalog.TryReserve(orderId, [new RequestedLine("TEST-A", 3)]);
+
+        catalog.TryReserve(orderId, [new RequestedLine("TEST-A", 3)]).ShouldBeOfType<ReservationResult.AlreadyDecided>();
+
+        catalog.Get("TEST-A")!.Available.ShouldBe(7);
+    }
+
+    [Fact]
+    public void A_rejected_order_stays_rejected_after_a_refill()
+    {
+        var catalog = NewCatalog();
+        var orderId = Guid.NewGuid();
+        catalog.TryReserve(orderId, [new RequestedLine("TEST-A", 11)]).ShouldBeOfType<ReservationResult.Rejected>();
+        catalog.Set("TEST-A", "Test item A", 18.50m, 100);
+
+        catalog.TryReserve(orderId, [new RequestedLine("TEST-A", 11)]).ShouldBeOfType<ReservationResult.AlreadyDecided>();
+
+        catalog.Get("TEST-A")!.Available.ShouldBe(100);
+    }
+
+    [Fact]
+    public void A_released_order_is_not_held_again()
+    {
+        var catalog = NewCatalog();
+        var orderId = Guid.NewGuid();
+        catalog.TryReserve(orderId, [new RequestedLine("TEST-A", 3)]);
+        catalog.Release(orderId);
+
+        catalog.TryReserve(orderId, [new RequestedLine("TEST-A", 3)]).ShouldBeOfType<ReservationResult.AlreadyDecided>();
+
+        catalog.Get("TEST-A")!.Available.ShouldBe(10);
+    }
 }

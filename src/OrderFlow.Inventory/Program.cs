@@ -37,9 +37,10 @@ builder.AddOrderFlowServiceDefaults("inventory", bus =>
         {
             endpoint.UseMessageRetry(retry =>
             {
-                // Two orders for the same item updated it at once (xmin), or a serialization failure.
+                // Two orders for the same item updated it at once (xmin), a serialization failure,
+                // or two copies of one order inserting its decision (spec 004).
                 retry.Handle<DbUpdateConcurrencyException>();
-                retry.Handle<Exception>(IsTransientDatabaseFailure);
+                retry.Handle<Exception>(IsRetryableDatabaseFailure);
                 retry.Intervals(10, 50, 100, 250, 500, 1000, 2000);
             });
             endpoint.UseEntityFrameworkOutbox<InventoryDbContext>(context);
@@ -67,11 +68,14 @@ app.MapStockEndpoints(app.Configuration);
 
 app.Run();
 
-static bool IsTransientDatabaseFailure(Exception exception)
+static bool IsRetryableDatabaseFailure(Exception exception)
 {
     for (var current = exception; current is not null; current = current.InnerException)
     {
-        if (current is PostgresException { SqlState: PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.DeadlockDetected })
+        if (current is PostgresException
+            {
+                SqlState: PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.DeadlockDetected or PostgresErrorCodes.UniqueViolation,
+            })
         {
             return true;
         }

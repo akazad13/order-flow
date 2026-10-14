@@ -16,6 +16,10 @@ public sealed class OrderPlacedConsumer(ICatalogStore catalog, TimeProvider cloc
 
         switch (result)
         {
+            case ReservationResult.AlreadyDecided:
+                // A repeat: the first decision was already announced (spec 004, R-1).
+                return;
+
             case ReservationResult.Reserved reserved:
                 await context.Publish(new StockReserved(
                     order.OrderId,

@@ -19,6 +19,7 @@
     <ReqnrollFeatureFiles Include="..\..\features\component\hold-stock.feature" Link="Features\hold-stock.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\reject-stock.feature" Link="Features\reject-stock.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\release-stock.feature" Link="Features\release-stock.feature" />
+    <ReqnrollFeatureFiles Include="..\..\features\component\duplicate-order-placed.feature" Link="Features\duplicate-order-placed.feature" />
   </ItemGroup>
 
   <ItemGroup>

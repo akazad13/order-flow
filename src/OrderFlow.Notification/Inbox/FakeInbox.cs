@@ -27,13 +27,14 @@ public interface IFakeInbox
 
 public sealed class InMemoryFakeInbox : IFakeInbox
 {
-    private readonly ConcurrentDictionary<string, ConcurrentQueue<InboxMessage>> _messages = new();
+    // One message per (order, text): a repeated event tells the customer nothing new (spec 004, AC-5).
+    private readonly ConcurrentDictionary<(Guid OrderId, string Text), InboxMessage> _messages = new();
 
-    public void Deliver(InboxMessage message) =>
-        _messages.GetOrAdd(message.CustomerId, _ => new ConcurrentQueue<InboxMessage>()).Enqueue(message);
+    public void Deliver(InboxMessage message) => _messages.TryAdd((message.OrderId, message.Text), message);
 
-    public IReadOnlyList<InboxMessage> For(string customerId) =>
-        _messages.TryGetValue(customerId, out var queue)
-            ? queue.OrderBy(m => m.OccurredAt).ThenBy(m => m.ReceivedAt).ToList()
-            : [];
+    public IReadOnlyList<InboxMessage> For(string customerId) => _messages.Values
+        .Where(m => m.CustomerId == customerId)
+        .OrderBy(m => m.OccurredAt)
+        .ThenBy(m => m.ReceivedAt)
+        .ToList();
 }

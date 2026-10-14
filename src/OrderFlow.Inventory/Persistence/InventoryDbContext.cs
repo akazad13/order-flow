@@ -19,10 +19,14 @@ public sealed class StockItemRow
     public CatalogItem ToItem() => new(Sku, Name, UnitPrice, Available);
 }
 
-/// <summary>What one order holds; deleted when released, so a release happens at most once.</summary>
+/// <summary>
+/// The stock decision for one order (spec 004): Held (with its lines), Rejected (no lines) or
+/// Released. Kept after release, so a late repeat of the order is not held again.
+/// </summary>
 public sealed class ReservationRow
 {
     public Guid OrderId { get; init; }
+    public StockDecision Status { get; set; }
     public required List<ReservedLine> Lines { get; init; }
 }
 
@@ -51,6 +55,7 @@ public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> opti
         {
             reservation.ToTable("reservations");
             reservation.HasKey(r => r.OrderId);
+            reservation.Property(r => r.Status).HasConversion<string>().HasMaxLength(16);
             reservation.Property(r => r.Lines)
                 .HasColumnType("jsonb")
                 .HasConversion(

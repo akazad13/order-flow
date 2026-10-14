@@ -82,5 +82,30 @@ public sealed class TakePaymentSteps(PaymentServiceFactory service)
         paid.Amount.ShouldBe(Money(amount));
     }
 
+    [When(@"^stock is reserved twice for an order by customer ""([^""]+)"" with a total of (\d+\.\d{2})$")]
+    public async Task WhenStockIsReservedTwice(string customerId, string total)
+    {
+        _ = service.CreateClient();
+        var reserved = new StockReserved(_orderId, customerId, [new StockReservedLine("TEST-A", 1, Money(total))], Money(total), DateTimeOffset.UtcNow);
+
+        // Two real repeats: same content, new message IDs.
+        await service.Harness.Bus.Publish(reserved);
+        await service.Harness.Bus.Publish(reserved);
+
+        var consumed = await service.Harness.GetConsumerHarness<StockReservedConsumer>().Consumed
+            .SelectAsync<StockReserved>(m => m.Context.Message.OrderId == _orderId)
+            .Take(2)
+            .CountAsync();
+        consumed.ShouldBe(2);
+    }
+
+    [Then("PaymentSucceeded is published once for that order")]
+    public void ThenPaymentSucceededIsPublishedOnce() =>
+        service.Harness.Published.Select<PaymentSucceeded>(m => m.Context.Message.OrderId == _orderId).Count().ShouldBe(1);
+
+    [Then("PaymentFailed is published once for that order")]
+    public void ThenPaymentFailedIsPublishedOnce() =>
+        service.Harness.Published.Select<PaymentFailed>(m => m.Context.Message.OrderId == _orderId).Count().ShouldBe(1);
+
     private static decimal Money(string value) => decimal.Parse(value, CultureInfo.InvariantCulture);
 }

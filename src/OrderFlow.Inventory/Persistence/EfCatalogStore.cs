@@ -34,6 +34,13 @@ public sealed class EfCatalogStore(InventoryDbContext db) : ICatalogStore
 
     public async Task<ReservationResult> TryReserveAsync(Guid orderId, IReadOnlyList<RequestedLine> lines, CancellationToken cancellationToken)
     {
+        // Two copies at once both get past here; the second then fails on xmin or the primary
+        // key, is retried with a fresh scope, and stops here (spec 004, AC-6).
+        if (await db.Reservations.AnyAsync(r => r.OrderId == orderId, cancellationToken))
+        {
+            return new ReservationResult.AlreadyDecided();
+        }
+
         var merged = StockRules.Merge(lines.Select(l => l with { Sku = Normalize(l.Sku) }));
         var skus = merged.Select(l => l.Sku).ToList();
         var rows = await db.StockItems.Where(i => skus.Contains(i.Sku)).ToDictionaryAsync(i => i.Sku, cancellationToken);
@@ -46,7 +53,11 @@ public sealed class EfCatalogStore(InventoryDbContext db) : ICatalogStore
                 rows[line.Sku].Available -= line.Quantity;
             }
 
-            db.Reservations.Add(new ReservationRow { OrderId = orderId, Lines = reserved.Lines.ToList() });
+            db.Reservations.Add(new ReservationRow { OrderId = orderId, Status = StockDecision.Held, Lines = reserved.Lines.ToList() });
+        }
+        else
+        {
+            db.Reservations.Add(new ReservationRow { OrderId = orderId, Status = StockDecision.Rejected, Lines = [] });
         }
 
         return result;
@@ -55,7 +66,7 @@ public sealed class EfCatalogStore(InventoryDbContext db) : ICatalogStore
     public async Task<IReadOnlyList<ReservedLine>> ReleaseAsync(Guid orderId, CancellationToken cancellationToken)
     {
         var reservation = await db.Reservations.FindAsync([orderId], cancellationToken);
-        if (reservation is null)
+        if (reservation is not { Status: StockDecision.Held })
         {
             return [];
         }
@@ -70,7 +81,7 @@ public sealed class EfCatalogStore(InventoryDbContext db) : ICatalogStore
             }
         }
 
-        db.Reservations.Remove(reservation);
+        reservation.Status = StockDecision.Released;
         return reservation.Lines;
     }
 

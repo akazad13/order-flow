@@ -15,6 +15,59 @@ public sealed class HoldStockSteps(InventoryServiceFactory service)
 {
     private readonly Guid _orderId = Guid.NewGuid();
     private StockReserved? _reserved;
+    private OrderPlaced? _lastPlaced;
+    private int _placementsSent;
+
+    [When("an order for {int} of {string} is placed twice")]
+    public async Task WhenAnOrderIsPlacedTwice(int quantity, string sku)
+    {
+        _lastPlaced = new OrderPlaced(_orderId, "customer-1", [new OrderPlacedLine(sku, quantity)], DateTimeOffset.UtcNow);
+        await SendPlacement(_lastPlaced);
+        await SendPlacement(_lastPlaced);
+    }
+
+    [When("an order for {int} of {string} is placed")]
+    public async Task WhenAnOrderIsPlaced(int quantity, string sku)
+    {
+        _lastPlaced = new OrderPlaced(_orderId, "customer-1", [new OrderPlacedLine(sku, quantity)], DateTimeOffset.UtcNow);
+        await SendPlacement(_lastPlaced);
+    }
+
+    [When("the stock of {string} is refilled to {int}")]
+    public async Task WhenTheStockIsRefilled(string sku, int available)
+    {
+        var response = await service.CreateClient().PutAsJsonAsync($"/stock/{sku}", new SetStockRequest("Refilled item", 6.25m, available));
+        response.EnsureSuccessStatusCode();
+    }
+
+    [When("the same order placement arrives again")]
+    public async Task WhenTheSameOrderPlacementArrivesAgain()
+    {
+        // A real repeat: same content, new message ID, so no inbox can hide it.
+        await SendPlacement(_lastPlaced!);
+    }
+
+    [Then("StockReserved is published once for that order")]
+    public void ThenStockReservedIsPublishedOnce() =>
+        service.Harness.Published.Select<StockReserved>(m => m.Context.Message.OrderId == _orderId).Count().ShouldBe(1);
+
+    [Then("StockRejected is published once for that order")]
+    public void ThenStockRejectedIsPublishedOnce() =>
+        service.Harness.Published.Select<StockRejected>(m => m.Context.Message.OrderId == _orderId).Count().ShouldBe(1);
+
+    /// <summary>Publishes a placement and waits until the consumer has handled it.</summary>
+    private async Task SendPlacement(OrderPlaced placement)
+    {
+        _ = service.CreateClient();
+        await service.Harness.Bus.Publish(placement);
+        _placementsSent++;
+
+        var consumed = await service.Harness.GetConsumerHarness<OrderPlacedConsumer>().Consumed
+            .SelectAsync<OrderPlaced>(m => m.Context.Message.OrderId == _orderId)
+            .Take(_placementsSent)
+            .CountAsync();
+        consumed.ShouldBe(_placementsSent);
+    }
 
     [Given("the catalog has:")]
     public async Task GivenTheCatalogHas(DataTable table)
@@ -91,7 +144,9 @@ public sealed class HoldStockSteps(InventoryServiceFactory service)
     [Given("an order holds {int} of {string}")]
     public async Task GivenAnOrderHolds(int quantity, string sku)
     {
-        await service.Harness.Bus.Publish(new OrderPlaced(_orderId, "customer-1", [new OrderPlacedLine(sku, quantity)], DateTimeOffset.UtcNow));
+        _lastPlaced = new OrderPlaced(_orderId, "customer-1", [new OrderPlacedLine(sku, quantity)], DateTimeOffset.UtcNow);
+        await service.Harness.Bus.Publish(_lastPlaced);
+        _placementsSent++;
         (await service.Harness.Published.Any<StockReserved>(m => m.Context.Message.OrderId == _orderId)).ShouldBeTrue();
     }
 

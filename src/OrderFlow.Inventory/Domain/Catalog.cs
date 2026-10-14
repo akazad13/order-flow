@@ -14,6 +14,17 @@ public abstract record ReservationResult
     public sealed record Reserved(IReadOnlyList<ReservedLine> Lines, decimal Total) : ReservationResult;
 
     public sealed record Rejected(IReadOnlyList<Shortage> Shortages) : ReservationResult;
+
+    /// <summary>A repeat: stock for this order was already decided (spec 004). Nothing changed.</summary>
+    public sealed record AlreadyDecided : ReservationResult;
+}
+
+/// <summary>The first stock decision for an order, remembered so repeats change nothing (spec 004, R-2).</summary>
+public enum StockDecision
+{
+    Held,
+    Rejected,
+    Released,
 }
 
 /// <summary>
@@ -26,6 +37,7 @@ public sealed class Catalog
     private readonly Lock _lock = new();
     private readonly Dictionary<string, CatalogItem> _items = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<Guid, IReadOnlyList<ReservedLine>> _reservations = new();
+    private readonly Dictionary<Guid, StockDecision> _decisions = new();
 
     public Catalog(IEnumerable<CatalogItem>? seed = null)
     {
@@ -68,7 +80,13 @@ public sealed class Catalog
 
         lock (_lock)
         {
+            if (_decisions.ContainsKey(orderId))
+            {
+                return new ReservationResult.AlreadyDecided();
+            }
+
             var result = StockRules.Check(merged, sku => _items.GetValueOrDefault(sku));
+            _decisions[orderId] = result is ReservationResult.Reserved ? StockDecision.Held : StockDecision.Rejected;
             if (result is ReservationResult.Reserved reserved)
             {
                 foreach (var line in reserved.Lines)
@@ -92,10 +110,12 @@ public sealed class Catalog
     {
         lock (_lock)
         {
-            if (!_reservations.Remove(orderId, out var held))
+            if (_decisions.GetValueOrDefault(orderId) != StockDecision.Held || !_reservations.Remove(orderId, out var held))
             {
                 return [];
             }
+
+            _decisions[orderId] = StockDecision.Released;
 
             foreach (var line in held)
             {

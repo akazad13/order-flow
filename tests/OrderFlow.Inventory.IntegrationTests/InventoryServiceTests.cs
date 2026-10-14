@@ -1,8 +1,12 @@
 using System.Net.Http.Json;
+using MassTransit.EntityFrameworkCoreIntegration;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using OrderFlow.Contracts.Events;
 using OrderFlow.IntegrationTesting;
 using OrderFlow.Inventory.Api;
 using OrderFlow.Inventory.Domain;
+using OrderFlow.Inventory.Persistence;
 
 namespace OrderFlow.Inventory.IntegrationTests;
 
@@ -62,6 +66,45 @@ public sealed class InventoryServiceTests(InfrastructureFixture infrastructure)
         testBus.Received<StockReserved>().Count(m => ids.Contains(m.OrderId)).ShouldBe(10);
         testBus.Received<StockRejected>().Count(m => ids.Contains(m.OrderId)).ShouldBe(10);
         (await Available(client, "ITEM-2")).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Two_copies_of_one_order_at_once_hold_once()
+    {
+        // Spec 004, AC-6
+        var settings = await SettingsAsync();
+        await using var testBus = await TestBus.StartAsync(infrastructure, settings["RabbitMq:VirtualHost"]!);
+        await using var host = new ServiceHost<Program>(settings);
+        var client = await host.StartAsync();
+        await SetStock(client, "ITEM-3", 10);
+
+        // Same content, two message IDs: the inbox cannot hide either copy.
+        var orderId = Guid.NewGuid();
+        var placed = new OrderPlaced(orderId, "customer-1", [new OrderPlacedLine("ITEM-3", 3)], DateTimeOffset.UtcNow);
+        await Task.WhenAll(testBus.Publish(placed), testBus.Publish(placed));
+
+        await WaitUntilConsumed(host, messages: 2);
+
+        testBus.Received<StockReserved>().Count(m => m.OrderId == orderId).ShouldBe(1);
+        (await Available(client, "ITEM-3")).ShouldBe(7);
+    }
+
+    /// <summary>Polls the outbox's inbox table until the service has finished this many messages.</summary>
+    private static async Task WaitUntilConsumed(ServiceHost<Program> host, int messages)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while (true)
+        {
+            await using var scope = host.Services.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<InventoryDbContext>();
+            if (await db.Set<InboxState>().CountAsync(i => i.Consumed != null) >= messages)
+            {
+                return;
+            }
+
+            DateTime.UtcNow.ShouldBeLessThan(deadline, $"the service did not finish {messages} messages");
+            await Task.Delay(50);
+        }
     }
 
     private async Task<Dictionary<string, string?>> SettingsAsync()

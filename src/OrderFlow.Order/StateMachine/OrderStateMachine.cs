@@ -52,7 +52,11 @@ public sealed class OrderStateMachine : MassTransitStateMachine<OrderState>
                 .Activity(x => x.OfType<CancelForShortageActivity>())
                 .TransitionTo(Cancelled));
 
+        // Repeats (spec 004) are ignored explicitly, so they are acknowledged instead of being
+        // retried and faulted. Events that arrive early (not repeats) are still left unhandled
+        // here on purpose: OrderStateDefinition retries them until their turn (ADR 0004).
         During(AwaitingStock,
+            Ignore(OrderPlaced),
             When(StockReserved)
                 .Activity(x => x.OfType<RecordStockHeldActivity>())
                 .TransitionTo(AwaitingPayment),
@@ -62,6 +66,7 @@ public sealed class OrderStateMachine : MassTransitStateMachine<OrderState>
 
         During(AwaitingPayment,
             Ignore(OrderPlaced),
+            Ignore(StockReserved),
             When(PaymentSucceeded)
                 .Activity(x => x.OfType<ConfirmOrderActivity>())
                 .TransitionTo(Confirmed),
@@ -69,12 +74,18 @@ public sealed class OrderStateMachine : MassTransitStateMachine<OrderState>
                 .Activity(x => x.OfType<CancelForPaymentActivity>())
                 .TransitionTo(Cancelled));
 
-        // Status only moves forward (R-4): a late OrderPlaced changes nothing.
+        // Status only moves forward (spec 001, R-4); final states ignore every earlier event.
         During(Confirmed,
-            Ignore(OrderPlaced));
+            Ignore(OrderPlaced),
+            Ignore(StockReserved),
+            Ignore(PaymentSucceeded));
 
         During(Cancelled,
-            Ignore(OrderPlaced));
+            Ignore(OrderPlaced),
+            Ignore(StockReserved),
+            Ignore(StockRejected),
+            Ignore(PaymentSucceeded),
+            Ignore(PaymentFailed));
     }
 
     public State AwaitingStock { get; private set; } = null!;

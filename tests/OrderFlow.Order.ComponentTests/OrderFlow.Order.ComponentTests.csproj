@@ -20,6 +20,7 @@
     <ReqnrollFeatureFiles Include="..\..\features\component\place-order.feature" Link="Features\place-order.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\confirm-order.feature" Link="Features\confirm-order.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\cancel-order.feature" Link="Features\cancel-order.feature" />
+    <ReqnrollFeatureFiles Include="..\..\features\component\duplicate-order-events.feature" Link="Features\duplicate-order-events.feature" />
   </ItemGroup>
 
   <ItemGroup>

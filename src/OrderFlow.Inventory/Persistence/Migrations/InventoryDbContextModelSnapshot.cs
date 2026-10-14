@@ -200,6 +200,11 @@ namespace OrderFlow.Inventory.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.HasKey("OrderId");
 
                     b.ToTable("reservations", (string)null);

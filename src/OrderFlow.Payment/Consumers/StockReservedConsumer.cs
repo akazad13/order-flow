@@ -13,8 +13,12 @@ public sealed class StockReservedConsumer(IPaymentGateway gateway, TimeProvider 
     {
         var order = context.Message;
 
-        switch (gateway.Charge(order.OrderId, order.CustomerId, order.Total))
+        switch (gateway.ChargeOnce(order.OrderId, order.CustomerId, order.Total))
         {
+            case null:
+                // A repeat: the payment was already decided and announced (spec 004, R-1).
+                break;
+
             case ChargeResult.Succeeded(var charge):
                 await context.Publish(new PaymentSucceeded(order.OrderId, charge.PaymentId, charge.Amount, charge.ChargedAt));
                 break;

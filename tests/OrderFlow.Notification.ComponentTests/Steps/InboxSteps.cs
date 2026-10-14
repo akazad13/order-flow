@@ -50,6 +50,23 @@ public sealed class InboxSteps(NotificationServiceFactory service)
         (await consumer.Consumed.Any<OrderCancelled>(m => m.Context.Message.OrderId == _orderId)).ShouldBeTrue();
     }
 
+    [When("an OrderConfirmed event for customer {string} arrives twice")]
+    public async Task WhenAnOrderConfirmedEventArrivesTwice(string customerId)
+    {
+        _ = service.CreateClient();
+        var confirmed = new OrderConfirmed(_orderId, customerId, 37.00m, DateTimeOffset.UtcNow);
+
+        // Two real repeats: same content, new message IDs.
+        await service.Harness.Bus.Publish(confirmed);
+        await service.Harness.Bus.Publish(confirmed);
+
+        var consumed = await service.Harness.GetConsumerHarness<OrderConfirmedConsumer>().Consumed
+            .SelectAsync<OrderConfirmed>(m => m.Context.Message.OrderId == _orderId)
+            .Take(2)
+            .CountAsync();
+        consumed.ShouldBe(2);
+    }
+
     [Given("an order for customer {string} was placed and then confirmed")]
     public void GivenAnOrderWasPlacedAndThenConfirmed(string customerId)
     {
