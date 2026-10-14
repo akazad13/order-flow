@@ -84,6 +84,13 @@ services:
     build:
       <<: *service-build
       args: { PROJECT: OrderFlow.Notification }
+    environment:
+      RabbitMq__Host: rabbitmq
+      Persistence__Provider: Postgres # ADR 0005, spec 011
+      ConnectionStrings__Notifications: Host=postgres;Database=notifications;Username=orderflow;Password=orderflow
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+      postgres: { condition: service_healthy }
     ports: ["5104:8080"]
 
   web:

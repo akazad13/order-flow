@@ -1,5 +1,3 @@
-using MassTransit;
-using Microsoft.Extensions.DependencyInjection;
 using OrderFlow.Contracts.Events;
 using OrderFlow.IntegrationTesting;
 
@@ -141,15 +139,8 @@ public sealed class PaymentServiceTests(InfrastructureFixture infrastructure)
         await testBus.WaitFor<PaymentSucceeded>(m => m.OrderId == probe.OrderId);
     }
 
-    private static HandledCounter<T> Handled<T>(ServiceHost<Program> host, Func<T, bool> match) where T : class
-    {
-        var counter = new HandledCounter<T>(match);
-
-        // Resolve the bus off the test's execution flow: resolving it sets MassTransit's ambient
-        // log context (an AsyncLocal), which would outlive this host and break the next one.
-        Task.Run(() => host.Services.GetRequiredService<IBus>().ConnectConsumeMessageObserver(counter)).GetAwaiter().GetResult();
-        return counter;
-    }
+    private static HandledCounter<T> Handled<T>(ServiceHost<Program> host, Func<T, bool> match) where T : class =>
+        HandledCounter<T>.On(host.Services, match);
 
     private static StockReserved StockReservedFor(Guid orderId, decimal total) =>
         new(orderId, "customer-1", [new StockReservedLine("ITEM-1", 1, total)], total, DateTimeOffset.UtcNow);
@@ -163,31 +154,5 @@ public sealed class PaymentServiceTests(InfrastructureFixture infrastructure)
         settings["Persistence:Provider"] = "Postgres";
         settings["ConnectionStrings:Payments"] = infrastructure.ConnectionString($"payments_{Guid.NewGuid():N}");
         return settings;
-    }
-
-    /// <summary>Counts messages the service finished handling (successfully or not).</summary>
-    private sealed class HandledCounter<T>(Func<T, bool> match) : IConsumeMessageObserver<T> where T : class
-    {
-        private int _count;
-
-        public Task PreConsume(ConsumeContext<T> context) => Task.CompletedTask;
-
-        public Task PostConsume(ConsumeContext<T> context)
-        {
-            if (match(context.Message)) Interlocked.Increment(ref _count);
-            return Task.CompletedTask;
-        }
-
-        public Task ConsumeFault(ConsumeContext<T> context, Exception exception) => Task.CompletedTask;
-
-        public async Task WaitFor(int count)
-        {
-            var deadline = DateTime.UtcNow.AddSeconds(30);
-            while (Volatile.Read(ref _count) < count)
-            {
-                DateTime.UtcNow.ShouldBeLessThan(deadline, $"the service handled {_count} of {count} {typeof(T).Name}");
-                await Task.Delay(50);
-            }
-        }
     }
 }

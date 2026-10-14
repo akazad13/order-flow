@@ -18,10 +18,10 @@ public sealed class OrderCancelledConsumer(IFakeInbox inbox, TimeProvider clock)
         _ => "Your order was cancelled",
     };
 
-    public Task Consume(ConsumeContext<OrderCancelled> context)
+    public async Task Consume(ConsumeContext<OrderCancelled> context)
     {
         var order = context.Message;
-        inbox.Deliver(new InboxMessage(Guid.NewGuid(), order.CustomerId, order.OrderId, TextFor(order.Reason), order.CancelledAt, clock.GetUtcNow()));
-        return Task.CompletedTask;
+        await inbox.DeliverAsync(new InboxMessage(Guid.NewGuid(), order.CustomerId, order.OrderId, TextFor(order.Reason), order.CancelledAt, clock.GetUtcNow()), context.CancellationToken);
+        await inbox.SaveChangesAsync(context.CancellationToken);
     }
 }

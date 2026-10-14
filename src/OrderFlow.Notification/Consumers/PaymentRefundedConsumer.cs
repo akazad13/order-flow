@@ -11,10 +11,10 @@ public sealed class PaymentRefundedConsumer(IFakeInbox inbox, TimeProvider clock
     public static string TextFor(decimal amount) =>
         $"Your payment of {amount.ToString("0.00", CultureInfo.InvariantCulture)} was refunded";
 
-    public Task Consume(ConsumeContext<PaymentRefunded> context)
+    public async Task Consume(ConsumeContext<PaymentRefunded> context)
     {
         var refund = context.Message;
-        inbox.Deliver(new InboxMessage(Guid.NewGuid(), refund.CustomerId, refund.OrderId, TextFor(refund.Amount), refund.RefundedAt, clock.GetUtcNow()));
-        return Task.CompletedTask;
+        await inbox.DeliverAsync(new InboxMessage(Guid.NewGuid(), refund.CustomerId, refund.OrderId, TextFor(refund.Amount), refund.RefundedAt, clock.GetUtcNow()), context.CancellationToken);
+        await inbox.SaveChangesAsync(context.CancellationToken);
     }
 }

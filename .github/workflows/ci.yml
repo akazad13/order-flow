@@ -54,6 +54,7 @@ jobs:
       - run: dotnet ef migrations has-pending-model-changes -p src/OrderFlow.Order -s src/OrderFlow.Order
       - run: dotnet ef migrations has-pending-model-changes -p src/OrderFlow.Inventory -s src/OrderFlow.Inventory
       - run: dotnet ef migrations has-pending-model-changes -p src/OrderFlow.Payment -s src/OrderFlow.Payment
+      - run: dotnet ef migrations has-pending-model-changes -p src/OrderFlow.Notification -s src/OrderFlow.Notification
       - run: dotnet test OrderFlow.slnx --filter "Category=Integration" --logger "trx" --results-directory test-results
       - uses: actions/upload-artifact@v4
         if: always()

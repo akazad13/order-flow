@@ -65,6 +65,7 @@ What the table says:
 
 - Templates: spec edge cases prompt for orderings; plan test table names exact tests; tasks allow deferral with a reason and end with the gate.
 - ADR 0007 and constitution: the gates in CI (spec 009).
+- Follow-ups done since: Payment's decisions ([spec 010](../specs/010-durable-payments/spec.md)) and Notification's inbox ([spec 011](../specs/011-durable-inbox/spec.md)) moved to PostgreSQL. Every service now survives a restart, and a repeat after a restart neither charges nor tells the customer again.
 
 ## Still open
 
@@ -73,7 +74,6 @@ What the table says:
 | Push to GitHub, see CI green, protect `main` with the CI jobs | Every gate here only bites in CI | Spec 000, T15 (deferred) |
 | Review the 24 decisions taken on the user's behalf | Product choices (cancel rules, refund wording, push vs. poll) | `grep -n "\[x\] \*\*Q" specs/*/spec.md` |
 | Breaking-change check between contract versions (e.g. oasdiff) | Lint checks a contract is valid, not that it is compatible with the last one | Spec 009 non-goal |
-| Notification keeps its inbox in memory | A restart empties every customer's inbox. (Payment's decisions moved to PostgreSQL in [spec 010](../specs/010-durable-payments/spec.md): a repeat after a restart no longer charges again.) | Spec 007 scope |
 | Stock decisions (`reservations`) and finished order trackers (`OrderState`) are never deleted | Kept on purpose: they are what makes a late repeat harmless (spec 004). Removing them needs a retention window longer than any redelivery. Outbox and inbox tables are not a problem: MassTransit deletes delivered messages and its `InboxCleanupService` removes processed ones after the duplicate-detection window | Spec 004 non-goal |
 | Authentication; checking a customer owns the order they cancel or watch | No authentication anywhere: anyone with an order ID can read, watch or cancel it | Specs 005, 006 non-goals |
 | More than one instance per service | Three concrete breaks: (1) `OrderUpdatesConsumer` shares one queue, so each push reaches only the instance that took the message and watchers on the other instance miss it (needs a SignalR backplane or a queue per instance); (2) the Payment fake provider's test switches are per process (decisions are shared since spec 010); (3) migrations run at startup and would race | ADR 0005, spec 005 |

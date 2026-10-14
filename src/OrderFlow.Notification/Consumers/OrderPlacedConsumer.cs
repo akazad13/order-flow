@@ -8,10 +8,10 @@ public sealed class OrderPlacedConsumer(IFakeInbox inbox, TimeProvider clock) : 
 {
     public const string OrderReceivedText = "We received your order";
 
-    public Task Consume(ConsumeContext<OrderPlaced> context)
+    public async Task Consume(ConsumeContext<OrderPlaced> context)
     {
         var order = context.Message;
-        inbox.Deliver(new InboxMessage(Guid.NewGuid(), order.CustomerId, order.OrderId, OrderReceivedText, order.PlacedAt, clock.GetUtcNow()));
-        return Task.CompletedTask;
+        await inbox.DeliverAsync(new InboxMessage(Guid.NewGuid(), order.CustomerId, order.OrderId, OrderReceivedText, order.PlacedAt, clock.GetUtcNow()), context.CancellationToken);
+        await inbox.SaveChangesAsync(context.CancellationToken);
     }
 }
