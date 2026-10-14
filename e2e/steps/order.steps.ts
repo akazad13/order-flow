@@ -45,6 +45,8 @@ Given('their payments are left undecided', async ({ request, scenario }) => {
 When('they cancel the order', async ({ page }) => {
   const order = page.getByRole('region', { name: 'Order' });
   await expect(order).toContainText('Status: Pending');
+  // Wait until the page watches the order, so the outcome can only arrive as a push (spec 005).
+  await expect(order).toHaveAttribute('data-watching', 'true');
   await order.getByRole('button', { name: 'Cancel order' }).click();
 });
 
@@ -70,6 +72,8 @@ Then('they see their order with status {string} within {int} seconds', async ({ 
 
 Then('the status was pushed to the page', async ({ scenario }) => {
   // SignalR's JSON protocol: an invocation frame naming the client method (spec 005, AC-1).
+  // Only meaningful once the page was watching before the change (see "they cancel the order"):
+  // a change made before the page joined arrives through the one read instead (AC-3).
   expect(scenario.hubFrames.some((frame) => frame.includes('"target":"OrderUpdated"'))).toBe(true);
 });
 

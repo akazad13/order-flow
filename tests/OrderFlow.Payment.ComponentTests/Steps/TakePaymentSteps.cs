@@ -5,6 +5,7 @@ using OrderFlow.Contracts.Events;
 using OrderFlow.Payment.ComponentTests.Support;
 using OrderFlow.Payment.Consumers;
 using OrderFlow.Payment.Gateway;
+using OrderFlow.Payment.Ledger;
 using OrderFlow.Testing;
 using Reqnroll;
 using Shouldly;
@@ -52,7 +53,7 @@ public sealed class TakePaymentSteps(PaymentServiceFactory service)
     [Then("the customer is not charged for that order")]
     public void ThenTheCustomerIsNotCharged()
     {
-        service.Services.GetRequiredService<FakePaymentGateway>().ChargesFor(_orderId).ShouldBeEmpty();
+        service.Services.GetRequiredService<InMemoryPaymentLedger>().ChargesFor(_orderId).ShouldBeEmpty();
     }
 
     [Then("no PaymentSucceeded is published")]
@@ -80,7 +81,7 @@ public sealed class TakePaymentSteps(PaymentServiceFactory service)
     [Then(@"^the customer is charged (\d+\.\d{2}) exactly once for that order$")]
     public void ThenTheCustomerIsChargedOnce(string amount)
     {
-        var gateway = service.Services.GetRequiredService<FakePaymentGateway>();
+        var gateway = service.Services.GetRequiredService<InMemoryPaymentLedger>();
 
         gateway.ChargesFor(_orderId).ShouldHaveSingleItem().Amount.ShouldBe(Money(amount));
     }

@@ -28,6 +28,8 @@ export function App() {
   const [errors, setErrors] = useState<string[]>([]);
   const [inbox, setInbox] = useState<InboxMessage[]>([]);
   const [cancelState, setCancelState] = useState<CancelState>('idle');
+  // True once the page has joined the order's live updates (spec 005); E2E waits on it.
+  const [watching, setWatching] = useState(false);
 
   const orderId = order?.orderId;
   const orderCustomerId = order?.customerId;
@@ -44,12 +46,14 @@ export function App() {
         if (active) setOrder((current) => newer(current, pushed));
       },
       async () => {
+        if (active) setWatching(true);
         const latest = await getOrder(orderId);
         if (active && latest) setOrder((current) => newer(current, latest));
       },
     );
     return () => {
       active = false;
+      setWatching(false);
       unwatch();
     };
   }, [orderId, isPending]);
@@ -123,7 +127,7 @@ export function App() {
       )}
 
       {order && (
-        <section aria-label="Order">
+        <section aria-label="Order" data-watching={watching}>
           <h2>Your order</h2>
           <p>
             Order <code>{order.orderId}</code>

@@ -19,5 +19,6 @@
     <Project Path="tests/OrderFlow.Order.PactTests/OrderFlow.Order.PactTests.csproj" />
     <Project Path="tests/OrderFlow.Order.UnitTests/OrderFlow.Order.UnitTests.csproj" />
     <Project Path="tests/OrderFlow.Payment.ComponentTests/OrderFlow.Payment.ComponentTests.csproj" />
+    <Project Path="tests/OrderFlow.Payment.IntegrationTests/OrderFlow.Payment.IntegrationTests.csproj" />
   </Folder>
 </Solution>

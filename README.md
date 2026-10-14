@@ -93,9 +93,9 @@ A nightly workflow (`.github/workflows/nightly.yml`) repeats E2E ten times and r
 | Payment | http://localhost:5103 |
 | Notification (fake inbox) | http://localhost:5104 |
 | RabbitMQ management | http://localhost:15672 (guest / guest) |
-| PostgreSQL | localhost:5432 (orderflow / orderflow; databases `orders`, `inventory`) |
+| PostgreSQL | localhost:5432 (orderflow / orderflow; databases `orders`, `inventory`, `payments`) |
 
-Order and Inventory store their state in PostgreSQL under compose (`Persistence__Provider=Postgres`) and in memory otherwise (ADR 0005). After changing an EF model, add a migration:
+Order, Inventory and Payment store their state in PostgreSQL under compose (`Persistence__Provider=Postgres`) and in memory otherwise (ADR 0005, spec 010). After changing an EF model, add a migration:
 
 ```bash
 dotnet ef migrations add <Name> -p src/OrderFlow.Order -s src/OrderFlow.Order -o Persistence/Migrations

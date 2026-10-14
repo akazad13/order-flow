@@ -31,7 +31,7 @@ The UI replaces the order poll with `watchOrder(orderId, onUpdate, onWatching)` 
 
 | Criterion | Unit | Component | Web | E2E | Scenario / test |
 | --- | --- | --- | --- | --- | --- |
-| AC-1 Pushed on change | | x | x | | `live-order-updates.feature` (confirmed, cancelled; payload deep-equals GET); `App.test.tsx` |
+| AC-1 Pushed on change | | x | x | x | `live-order-updates.feature` (confirmed, cancelled; payload deep-equals GET); `App.test.tsx`; `features/e2e/customer-cancel.feature` (push frame) |
 | AC-2 Only that order | | x | | | `live-order-updates.feature` "other orders" |
 | AC-3 Nothing missed | | | x | | `App.test.tsx` (reads once per watch start) |
 | AC-4 No polling | | | x | x | `App.test.tsx` (fake timers); E2E read count |
@@ -49,4 +49,5 @@ The UI replaces the order poll with `watchOrder(orderId, onUpdate, onWatching)` 
 - **Found during build: flaky harness waits (constitution V).** A spec 001 scenario failed 1 run in 8: `Saga.Consumed.Any<StockReserved>` gave up after 2 s. The harness's `Any` and `SelectAsync` stop as soon as the bus looks idle, which on a busy machine can be before the message is handled. With all test projects running at once, Inventory's `SelectAsync(...).Take(n)` helpers then failed in most runs. Every positive wait in the component tests now polls (`tests/Shared/Eventually.cs`, linked into each project); negative checks ("nothing published") keep `Any`, since waiting for idle is right there. Then 10 of 10 full fast runs green.
 - **Found during build: the web image did not build.** The Pact test (spec 008) imports `node:path`. `tsc` found Node's types in the repo root's `node_modules`, which CI's web job and the Docker build do not have. Added `@types/node` (22) to `web`.
 - **E2E check strengthened.** "At most one read" alone can pass with a 1-second poll (the order confirms in about a second). The scenario also checks that an `OrderUpdated` frame arrived on the hub's WebSocket; against the old Order image that check failed.
+- **Found later (spec 010 stress run, 2 in 100): the E2E push check raced.** "The status was pushed to the page" sat in the place-order scenario, but an order can be confirmed before the page joins the hub; then it arrives through the one read (AC-3), correctly, and no push frame exists. The check moved to the cancel scenario, which first waits until the page is watching (`data-watching`), so the outcome can only arrive as a push.
 - Mutation checks: broadcasting to every client fails "nothing about other orders"; a timer re-read fails AC-4; dropping the stale-read guards fails AC-5.

@@ -1,6 +1,6 @@
-# Spec: specs/006-customer-cancel/spec.md (AC-1, AC-4, AC-7, AC-8)
+# Spec: specs/006-customer-cancel/spec.md (AC-1, AC-4, AC-7, AC-8), specs/005-live-order-status/spec.md (AC-1)
 # Runs in: e2e/ (Playwright + playwright-bdd) against docker compose
-@e2e @spec-006
+@e2e @spec-006 @spec-005
 Feature: Customer cancels a pending order
 
   Scenario: Customer cancels while the payment is undecided, and the stock goes back

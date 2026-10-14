@@ -97,9 +97,11 @@ describe('App', () => {
   it('reads the order once each time it starts watching, so nothing is missed (spec 005, AC-3)', async () => {
     const live = await placeAndWatch();
 
+    expect(screen.getByRole('region', { name: 'Order' })).toHaveAttribute('data-watching', 'false');
     await live.joined();
     await waitFor(() => expect(clients.getOrder).toHaveBeenCalledTimes(1));
     expect(screen.getByText('Pending')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Order' })).toHaveAttribute('data-watching', 'true');
 
     // A reconnect: the order was confirmed while the connection was down.
     vi.mocked(clients.getOrder).mockResolvedValue(confirmed);

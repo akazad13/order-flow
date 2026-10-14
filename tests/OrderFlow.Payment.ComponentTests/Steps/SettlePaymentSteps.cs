@@ -5,6 +5,7 @@ using OrderFlow.Contracts.Events;
 using OrderFlow.Payment.ComponentTests.Support;
 using OrderFlow.Payment.Consumers;
 using OrderFlow.Payment.Gateway;
+using OrderFlow.Payment.Ledger;
 using OrderFlow.Testing;
 using Reqnroll;
 using Shouldly;
@@ -48,7 +49,7 @@ public sealed class SettlePaymentSteps(PaymentServiceFactory service, TakePaymen
 
     [Then(@"^the customer is refunded (\d+\.\d{2}) exactly once for that order$")]
     public void ThenTheCustomerIsRefundedOnce(string amount) =>
-        service.Services.GetRequiredService<FakePaymentGateway>().RefundsFor(payment.OrderId).ShouldHaveSingleItem().Amount.ShouldBe(Money(amount));
+        service.Services.GetRequiredService<InMemoryPaymentLedger>().RefundsFor(payment.OrderId).ShouldHaveSingleItem().Amount.ShouldBe(Money(amount));
 
     [Then("no PaymentRefunded is published")]
     public async Task ThenNoPaymentRefundedIsPublished() =>

@@ -72,6 +72,11 @@ services:
     environment:
       RabbitMq__Host: rabbitmq
       Payment__EnableTestEndpoints: "true" # PUT /test/declines/{customerId} (spec 003, Q1), PUT /test/stalls/{customerId} (spec 006, Q4)
+      Persistence__Provider: Postgres # ADR 0005, spec 010
+      ConnectionStrings__Payments: Host=postgres;Database=payments;Username=orderflow;Password=orderflow
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+      postgres: { condition: service_healthy }
     ports: ["5103:8080"]
 
   notification:

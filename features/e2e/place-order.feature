@@ -10,7 +10,6 @@ Feature: Place an order and see it confirmed
     When they order 2 of that item
     Then they see their order with status "Confirmed" within 10 seconds
     And they see a total of 37.00
-    And the status was pushed to the page
     And the page read the order at most once after placing it
     And their inbox shows, in order:
       | message                 |
