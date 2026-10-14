@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "lint:openapi": "spectral lint \"contracts/http/*.openapi.yaml\" --fail-severity warn",
-    "lint:asyncapi": "asyncapi validate contracts/events/asyncapi.yaml",
+    "lint:asyncapi": "asyncapi validate contracts/events/asyncapi.yaml && asyncapi validate contracts/realtime/order-updates.asyncapi.yaml",
     "lint:contracts": "npm run lint:openapi && npm run lint:asyncapi"
   },
   "devDependencies": {

@@ -3,6 +3,7 @@ using OrderFlow.Contracts.Events;
 using OrderFlow.Notification.ComponentTests.Support;
 using OrderFlow.Notification.Consumers;
 using OrderFlow.Notification.Inbox;
+using OrderFlow.Testing;
 using Reqnroll;
 using Shouldly;
 
@@ -25,7 +26,7 @@ public sealed class InboxSteps(NotificationServiceFactory service)
         await service.Harness.Bus.Publish(orderPlaced);
 
         var consumer = service.Harness.GetConsumerHarness<OrderPlacedConsumer>();
-        (await consumer.Consumed.Any<OrderPlaced>(m => m.Context.Message.OrderId == orderPlaced.OrderId)).ShouldBeTrue();
+        await Eventually.True(() => consumer.Consumed.Select<OrderPlaced>(m => m.Context.Message.OrderId == orderPlaced.OrderId).Any(), "OrderPlaced (Consumed)");
     }
 
     [When("an OrderConfirmed event arrives for customer {string}")]
@@ -37,7 +38,7 @@ public sealed class InboxSteps(NotificationServiceFactory service)
         await service.Harness.Bus.Publish(orderConfirmed);
 
         var consumer = service.Harness.GetConsumerHarness<OrderConfirmedConsumer>();
-        (await consumer.Consumed.Any<OrderConfirmed>(m => m.Context.Message.OrderId == orderConfirmed.OrderId)).ShouldBeTrue();
+        await Eventually.True(() => consumer.Consumed.Select<OrderConfirmed>(m => m.Context.Message.OrderId == orderConfirmed.OrderId).Any(), "OrderConfirmed (Consumed)");
     }
 
     [When("an OrderCancelled event with reason {string} arrives for customer {string}")]
@@ -47,7 +48,7 @@ public sealed class InboxSteps(NotificationServiceFactory service)
         await service.Harness.Bus.Publish(new OrderCancelled(_orderId, customerId, reason, "detail", DateTimeOffset.UtcNow));
 
         var consumer = service.Harness.GetConsumerHarness<OrderCancelledConsumer>();
-        (await consumer.Consumed.Any<OrderCancelled>(m => m.Context.Message.OrderId == _orderId)).ShouldBeTrue();
+        await Eventually.True(() => consumer.Consumed.Select<OrderCancelled>(m => m.Context.Message.OrderId == _orderId).Any(), "OrderCancelled (Consumed)");
     }
 
     [When("an OrderConfirmed event for customer {string} arrives twice")]
@@ -60,11 +61,10 @@ public sealed class InboxSteps(NotificationServiceFactory service)
         await service.Harness.Bus.Publish(confirmed);
         await service.Harness.Bus.Publish(confirmed);
 
-        var consumed = await service.Harness.GetConsumerHarness<OrderConfirmedConsumer>().Consumed
-            .SelectAsync<OrderConfirmed>(m => m.Context.Message.OrderId == _orderId)
-            .Take(2)
-            .CountAsync();
-        consumed.ShouldBe(2);
+        var consumer = service.Harness.GetConsumerHarness<OrderConfirmedConsumer>();
+        await Eventually.True(
+            () => consumer.Consumed.Select<OrderConfirmed>(m => m.Context.Message.OrderId == _orderId).Count() >= 2,
+            "2 OrderConfirmed consumed");
     }
 
     [Given("an order for customer {string} was placed and then confirmed")]
@@ -81,10 +81,10 @@ public sealed class InboxSteps(NotificationServiceFactory service)
         _ = service.CreateClient();
 
         await service.Harness.Bus.Publish(_confirmed!);
-        (await service.Harness.GetConsumerHarness<OrderConfirmedConsumer>().Consumed.Any<OrderConfirmed>(m => m.Context.Message.OrderId == _orderId)).ShouldBeTrue();
+        await Eventually.True(() => service.Harness.GetConsumerHarness<OrderConfirmedConsumer>().Consumed.Select<OrderConfirmed>(m => m.Context.Message.OrderId == _orderId).Any(), "OrderConfirmed (Consumed)");
 
         await service.Harness.Bus.Publish(_placed!);
-        (await service.Harness.GetConsumerHarness<OrderPlacedConsumer>().Consumed.Any<OrderPlaced>(m => m.Context.Message.OrderId == _orderId)).ShouldBeTrue();
+        await Eventually.True(() => service.Harness.GetConsumerHarness<OrderPlacedConsumer>().Consumed.Select<OrderPlaced>(m => m.Context.Message.OrderId == _orderId).Any(), "OrderPlaced (Consumed)");
     }
 
     [Then("the inbox of {string} lists, in order:")]

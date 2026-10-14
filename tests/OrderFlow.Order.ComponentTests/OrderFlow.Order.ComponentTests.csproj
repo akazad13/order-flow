@@ -8,6 +8,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Reqnroll.xUnit" />
@@ -21,10 +22,15 @@
     <ReqnrollFeatureFiles Include="..\..\features\component\confirm-order.feature" Link="Features\confirm-order.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\cancel-order.feature" Link="Features\cancel-order.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\duplicate-order-events.feature" Link="Features\duplicate-order-events.feature" />
+    <ReqnrollFeatureFiles Include="..\..\features\component\live-order-updates.feature" Link="Features\live-order-updates.feature" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\OrderFlow.Order\OrderFlow.Order.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\Eventually.cs" Link="Support\Eventually.cs" />
   </ItemGroup>
 
 </Project>

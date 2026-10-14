@@ -1,8 +1,14 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { getInbox, getOrder, placeOrder, type InboxMessage, type Order } from './api/clients';
+import { watchOrder } from './api/live';
 
-// Spec 001 Q3: poll until SignalR arrives in spec 005.
+// The inbox is still polled; order status is pushed (spec 005).
 export const POLL_MS = 1000;
+
+/** Status only moves forward: never replace a final status with Pending (spec 005, AC-5). */
+function newer(current: Order | null, next: Order): Order {
+  return current?.orderId === next.orderId && current.status !== 'Pending' && next.status === 'Pending' ? current : next;
+}
 
 // Same plain words as the customer's inbox (specs 002, 003).
 const CANCELLATION_TEXT: Record<NonNullable<Order['cancellation']>['reason'], string> = {
@@ -22,17 +28,24 @@ export function App() {
   const orderCustomerId = order?.customerId;
   const isPending = order?.status === 'Pending';
 
-  // Re-read the order while it is Pending (spec 001, AC-5).
+  // Watch the order while it is Pending (spec 005): updates are pushed, and the order is read
+  // once after each (re)join, for anything that changed before (AC-3). No timer (AC-4).
   useEffect(() => {
     if (!orderId || !isPending) return;
-    let cancelled = false;
-    const timer = setInterval(async () => {
-      const latest = await getOrder(orderId);
-      if (!cancelled && latest) setOrder(latest);
-    }, POLL_MS);
+    let active = true;
+    const unwatch = watchOrder(
+      orderId,
+      (pushed) => {
+        if (active) setOrder((current) => newer(current, pushed));
+      },
+      async () => {
+        const latest = await getOrder(orderId);
+        if (active && latest) setOrder((current) => newer(current, latest));
+      },
+    );
     return () => {
-      cancelled = true;
-      clearInterval(timer);
+      active = false;
+      unwatch();
     };
   }, [orderId, isPending]);
 

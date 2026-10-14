@@ -15,6 +15,16 @@ Given('an item priced {float} with {int} in stock', async ({ request, scenario }
 });
 
 Given('a new customer is on the order page', async ({ page, scenario }) => {
+  page.on('request', (request) => {
+    if (request.method() === 'GET' && /\/order-api\/orders\/[0-9a-f-]{36}$/.test(request.url())) {
+      scenario.orderReads.push(request.url());
+    }
+  });
+  page.on('websocket', (socket) => {
+    if (socket.url().includes('/order-api/hubs/orders')) {
+      socket.on('framereceived', ({ payload }) => scenario.hubFrames.push(payload.toString()));
+    }
+  });
   await page.goto('/');
   await page.getByLabel('Customer ID').fill(scenario.customerId);
 });
@@ -44,6 +54,16 @@ Then('they see their order with status {string}', async ({ page }, status: strin
 
 Then('they see their order with status {string} within {int} seconds', async ({ page }, status: string, seconds: number) => {
   await expect(page.getByRole('region', { name: 'Order' })).toContainText(`Status: ${status}`, { timeout: seconds * 1000 });
+});
+
+Then('the status was pushed to the page', async ({ scenario }) => {
+  // SignalR's JSON protocol: an invocation frame naming the client method (spec 005, AC-1).
+  expect(scenario.hubFrames.some((frame) => frame.includes('"target":"OrderUpdated"'))).toBe(true);
+});
+
+Then('the page read the order at most once after placing it', async ({ scenario }) => {
+  // One read after joining the hub (spec 005, AC-3); the status itself was pushed.
+  expect(scenario.orderReads.length).toBeLessThanOrEqual(1);
 });
 
 Then('they see a total of {float}', async ({ page }, total: number) => {

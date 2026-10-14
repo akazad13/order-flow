@@ -5,6 +5,7 @@ using OrderFlow.Contracts.Events;
 using OrderFlow.Payment.ComponentTests.Support;
 using OrderFlow.Payment.Consumers;
 using OrderFlow.Payment.Gateway;
+using OrderFlow.Testing;
 using Reqnroll;
 using Shouldly;
 
@@ -31,7 +32,7 @@ public sealed class TakePaymentSteps(PaymentServiceFactory service)
     [Then("PaymentFailed is published for that order with reason {string}")]
     public async Task ThenPaymentFailedIsPublished(string reason)
     {
-        (await service.Harness.Published.Any<PaymentFailed>(m => m.Context.Message.OrderId == _orderId)).ShouldBeTrue();
+        await Eventually.True(() => service.Harness.Published.Select<PaymentFailed>(m => m.Context.Message.OrderId == _orderId).Any(), "PaymentFailed (Published)");
         var failed = service.Harness.Published.Select<PaymentFailed>(m => m.Context.Message.OrderId == _orderId).Single().Context.Message;
 
         failed.Reason.ShouldBe(reason);
@@ -62,7 +63,7 @@ public sealed class TakePaymentSteps(PaymentServiceFactory service)
         await service.Harness.Bus.Publish(reserved);
 
         var consumer = service.Harness.GetConsumerHarness<StockReservedConsumer>();
-        (await consumer.Consumed.Any<StockReserved>(m => m.Context.Message.OrderId == _orderId)).ShouldBeTrue();
+        await Eventually.True(() => consumer.Consumed.Select<StockReserved>(m => m.Context.Message.OrderId == _orderId).Any(), "StockReserved (Consumed)");
     }
 
     [Then(@"^the customer is charged (\d+\.\d{2}) exactly once for that order$")]
@@ -76,7 +77,7 @@ public sealed class TakePaymentSteps(PaymentServiceFactory service)
     [Then(@"^PaymentSucceeded is published for that order with an amount of (\d+\.\d{2})$")]
     public async Task ThenPaymentSucceededIsPublished(string amount)
     {
-        (await service.Harness.Published.Any<PaymentSucceeded>(m => m.Context.Message.OrderId == _orderId)).ShouldBeTrue();
+        await Eventually.True(() => service.Harness.Published.Select<PaymentSucceeded>(m => m.Context.Message.OrderId == _orderId).Any(), "PaymentSucceeded (Published)");
         var paid = service.Harness.Published.Select<PaymentSucceeded>(m => m.Context.Message.OrderId == _orderId).Single().Context.Message;
 
         paid.Amount.ShouldBe(Money(amount));
@@ -92,11 +93,10 @@ public sealed class TakePaymentSteps(PaymentServiceFactory service)
         await service.Harness.Bus.Publish(reserved);
         await service.Harness.Bus.Publish(reserved);
 
-        var consumed = await service.Harness.GetConsumerHarness<StockReservedConsumer>().Consumed
-            .SelectAsync<StockReserved>(m => m.Context.Message.OrderId == _orderId)
-            .Take(2)
-            .CountAsync();
-        consumed.ShouldBe(2);
+        var consumer = service.Harness.GetConsumerHarness<StockReservedConsumer>();
+        await Eventually.True(
+            () => consumer.Consumed.Select<StockReserved>(m => m.Context.Message.OrderId == _orderId).Count() >= 2,
+            "2 StockReserved consumed");
     }
 
     [Then("PaymentSucceeded is published once for that order")]

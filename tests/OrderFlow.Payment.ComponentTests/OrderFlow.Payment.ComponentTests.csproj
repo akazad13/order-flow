@@ -25,4 +25,8 @@
     <ProjectReference Include="..\..\src\OrderFlow.Payment\OrderFlow.Payment.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\Shared\Eventually.cs" Link="Support\Eventually.cs" />
+  </ItemGroup>
+
 </Project>

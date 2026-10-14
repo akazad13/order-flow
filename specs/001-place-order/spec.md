@@ -58,5 +58,5 @@ Resolved 2026-10-14. Q1 is a business question for this spec; Q2 to Q4 decide ho
 
 - [x] **Q1 Prices.** Where does an item's unit price come from? (answer: the shop's catalog, kept with the stock. The price is fixed when the stock is held; the customer never supplies a price.)
 - [x] **Q2 Coordination.** Does the Order service direct each step (commands), or does each service react to the previous service's event? (answer: each service reacts to the previous event; the Order service tracks the order's progress and decides when it is Confirmed.)
-- [x] **Q3 Status in the UI.** How does the UI learn the order is Confirmed before SignalR arrives in spec 005? (answer: the UI re-reads the order every second while it is Pending.)
+- [x] **Q3 Status in the UI.** How does the UI learn the order is Confirmed before SignalR arrives in spec 005? (answer: the UI re-reads the order every second while it is Pending.) Superseded by [spec 005](../005-live-order-status/spec.md): status is now pushed.
 - [x] **Q4 Stock in tests.** How do tests and the demo get known stock levels? (answer: a few items are stocked at startup, and outside production a test can set the stock of any item.)

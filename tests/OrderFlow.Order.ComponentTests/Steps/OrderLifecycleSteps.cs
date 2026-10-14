@@ -8,6 +8,7 @@ using OrderFlow.OrderService.ComponentTests.Support;
 using OrderFlow.OrderService.Domain;
 using OrderFlow.OrderService.Persistence;
 using OrderFlow.OrderService.StateMachine;
+using OrderFlow.Testing;
 using Reqnroll;
 using Shouldly;
 
@@ -19,6 +20,9 @@ public sealed class OrderLifecycleSteps(OrderServiceFactory service)
     private OrderResponse? _placed;
     private decimal _reservedTotal;
 
+    /// <summary>The scenario's order ("that order"); shared with <see cref="LiveUpdateSteps"/>.</summary>
+    internal OrderResponse Placed => _placed!;
+
     private ISagaStateMachineTestHarness<OrderStateMachine, OrderState> Saga =>
         service.Harness.GetSagaStateMachineHarness<OrderStateMachine, OrderState>();
 
@@ -29,7 +33,7 @@ public sealed class OrderLifecycleSteps(OrderServiceFactory service)
         response.EnsureSuccessStatusCode();
         _placed = await response.Content.ReadFromJsonAsync<OrderResponse>();
 
-        (await Saga.Consumed.Any<OrderPlaced>(m => m.Context.Message.OrderId == _placed!.OrderId)).ShouldBeTrue();
+        await Eventually.True(() => Saga.Consumed.Select<OrderPlaced>(m => m.Context.Message.OrderId == _placed!.OrderId).Any(), "OrderPlaced (Consumed)");
     }
 
     [When(@"^stock is reserved for that order with a total of (\d+\.\d{2})$")]
@@ -43,7 +47,7 @@ public sealed class OrderLifecycleSteps(OrderServiceFactory service)
             Money(total),
             DateTimeOffset.UtcNow));
 
-        (await Saga.Consumed.Any<StockReserved>(m => m.Context.Message.OrderId == _placed.OrderId)).ShouldBeTrue();
+        await Eventually.True(() => Saga.Consumed.Select<StockReserved>(m => m.Context.Message.OrderId == _placed.OrderId).Any(), "StockReserved (Consumed)");
     }
 
     [When("every event for that order arrives again")]
@@ -90,13 +94,9 @@ public sealed class OrderLifecycleSteps(OrderServiceFactory service)
 
         await service.Harness.Bus.Publish(received[0].Context.Message);
 
-        // Poll rather than SelectAsync, which stops as soon as the harness looks idle.
-        var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (service.Harness.Consumed.Select<T>(m => OrderIdOf(m.Context.Message) == orderId).Count() <= received.Count)
-        {
-            DateTime.UtcNow.ShouldBeLessThan(deadline, $"repeated {typeof(T).Name} was never handled");
-            await Task.Delay(20);
-        }
+        await Eventually.True(
+            () => service.Harness.Consumed.Select<T>(m => OrderIdOf(m.Context.Message) == orderId).Count() > received.Count,
+            $"repeated {typeof(T).Name} handled");
     }
 
     private int Failed<T>(Func<T, bool> match) where T : class =>
@@ -116,7 +116,7 @@ public sealed class OrderLifecycleSteps(OrderServiceFactory service)
     {
         await service.Harness.Bus.Publish(new PaymentSucceeded(_placed!.OrderId, Guid.NewGuid(), _reservedTotal, DateTimeOffset.UtcNow));
 
-        (await Saga.Consumed.Any<PaymentSucceeded>(m => m.Context.Message.OrderId == _placed.OrderId)).ShouldBeTrue();
+        await Eventually.True(() => Saga.Consumed.Select<PaymentSucceeded>(m => m.Context.Message.OrderId == _placed.OrderId).Any(), "PaymentSucceeded (Consumed)");
     }
 
     [When(@"^payment succeeds before stock is reserved for that order, with a total of (\d+\.\d{2})$")]
@@ -144,7 +144,7 @@ public sealed class OrderLifecycleSteps(OrderServiceFactory service)
     [Then(@"^OrderConfirmed is published for that order with a total of (\d+\.\d{2})$")]
     public async Task ThenOrderConfirmedIsPublished(string total)
     {
-        (await service.Harness.Published.Any<OrderConfirmed>(m => m.Context.Message.OrderId == _placed!.OrderId)).ShouldBeTrue();
+        await Eventually.True(() => service.Harness.Published.Select<OrderConfirmed>(m => m.Context.Message.OrderId == _placed!.OrderId).Any(), "OrderConfirmed (Published)");
         var confirmed = service.Harness.Published.Select<OrderConfirmed>(m => m.Context.Message.OrderId == _placed!.OrderId).Single().Context.Message;
 
         confirmed.Total.ShouldBe(Money(total));
@@ -216,7 +216,7 @@ public sealed class OrderLifecycleSteps(OrderServiceFactory service)
     [Then("OrderCancelled is published for that order with reason {string}")]
     public async Task ThenOrderCancelledIsPublished(string reason)
     {
-        (await service.Harness.Published.Any<OrderCancelled>(m => m.Context.Message.OrderId == _placed!.OrderId)).ShouldBeTrue();
+        await Eventually.True(() => service.Harness.Published.Select<OrderCancelled>(m => m.Context.Message.OrderId == _placed!.OrderId).Any(), "OrderCancelled (Published)");
         var cancelled = service.Harness.Published.Select<OrderCancelled>(m => m.Context.Message.OrderId == _placed!.OrderId).Single().Context.Message;
 
         cancelled.Reason.ShouldBe(reason);

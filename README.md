@@ -8,12 +8,12 @@ A small event-driven order platform built to practice **spec-driven development*
 | --- | --- |
 | `.specify/` | Constitution (the rules) and spec/plan/tasks templates |
 | `specs/NNN-name/` | One folder per feature: `spec.md`, `plan.md`, `tasks.md` |
-| `contracts/` | OpenAPI (HTTP) and AsyncAPI + JSON Schema (events) |
+| `contracts/` | OpenAPI (HTTP), AsyncAPI + JSON Schema (events), AsyncAPI for the live-updates hub (`realtime/`) |
 | `pacts/` | Consumer-driven contract: what the web UI relies on from the Order API (Pact, ADR 0006) |
 | `features/` | Gherkin: `component/` (Reqnroll) and `e2e/` (playwright-bdd) |
 | `docs/adr/` | Architecture decisions |
 | `src/` | .NET 10 services: Order, Inventory, Payment, Notification |
-| `tests/` | Unit, component, contract and integration tests (.NET) |
+| `tests/` | Unit, component, contract and integration tests (.NET); `Shared/` holds helpers linked into each component test project |
 | `web/` | React + TypeScript UI (types generated from OpenAPI) |
 | `e2e/` | Playwright end-to-end tests |
 

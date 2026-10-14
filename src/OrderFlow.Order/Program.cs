@@ -42,7 +42,12 @@ builder.AddOrderFlowServiceDefaults("order", bus =>
     {
         bus.AddSagaStateMachine<OrderStateMachine, OrderState, OrderStateDefinition>().InMemoryRepository();
     }
+
+    // Spec 005: pushes final statuses to watching clients.
+    bus.AddConsumer<OrderUpdatesConsumer>(consumer => consumer.UseMessageRetry(retry => retry.Intervals(100, 500, 1000)));
 });
+
+builder.Services.AddSignalR();
 
 builder.Services.AddScoped<RecordStockHeldActivity>();
 builder.Services.AddScoped<ConfirmOrderActivity>();
@@ -60,5 +65,6 @@ if (usePostgres)
 
 app.MapOrderFlowDefaults();
 app.MapOrderEndpoints();
+app.MapHub<OrderUpdatesHub>(OrderUpdatesHub.Path);
 
 app.Run();

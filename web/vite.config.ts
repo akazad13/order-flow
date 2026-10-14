@@ -8,7 +8,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/order-api': { target: 'http://localhost:5101', rewrite: (path) => path.replace(/^\/order-api/, '') },
+      // ws: live order updates over SignalR (spec 005).
+      '/order-api': { target: 'http://localhost:5101', ws: true, rewrite: (path) => path.replace(/^\/order-api/, '') },
       '/notification-api': { target: 'http://localhost:5104', rewrite: (path) => path.replace(/^\/notification-api/, '') },
     },
   },

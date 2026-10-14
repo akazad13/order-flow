@@ -1,0 +1,56 @@
+asyncapi: 3.1.0
+info:
+  title: OrderFlow live order updates
+  version: 0.1.0
+  description: |
+    SignalR hub in the Order service (spec 005). A client connects, calls `WatchOrder`
+    with an order ID, and is then sent `OrderUpdated` whenever that order becomes
+    Confirmed or Cancelled. The payload is exactly what `GET /orders/{orderId}` returns.
+    A client must read the order once after each (re)join: changes made before it
+    joined are not replayed.
+defaultContentType: application/json
+servers:
+  local:
+    host: localhost:5101
+    pathname: /hubs/orders
+    protocol: ws
+    description: Order service (dotnet run); through the web app it is /order-api/hubs/orders
+channels:
+  orderUpdates:
+    address: /hubs/orders
+    description: One SignalR connection; the client joins one group per watched order.
+    messages:
+      WatchOrder:
+        $ref: '#/components/messages/WatchOrder'
+      OrderUpdated:
+        $ref: '#/components/messages/OrderUpdated'
+operations:
+  watchOrder:
+    action: send
+    channel:
+      $ref: '#/channels/orderUpdates'
+    summary: Hub method the client invokes to start receiving updates for one order.
+    messages:
+      - $ref: '#/channels/orderUpdates/messages/WatchOrder'
+  receiveOrderUpdated:
+    action: receive
+    channel:
+      $ref: '#/channels/orderUpdates'
+    summary: Client method the hub calls when a watched order becomes Confirmed or Cancelled.
+    messages:
+      - $ref: '#/channels/orderUpdates/messages/OrderUpdated'
+components:
+  messages:
+    WatchOrder:
+      name: WatchOrder
+      title: Watch an order
+      summary: The single argument is the order ID.
+      payload:
+        type: string
+        format: uuid
+    OrderUpdated:
+      name: OrderUpdated
+      title: An order changed
+      summary: The single argument is the order, as GET /orders/{orderId} returns it.
+      payload:
+        $ref: '../http/order.openapi.yaml#/components/schemas/Order'

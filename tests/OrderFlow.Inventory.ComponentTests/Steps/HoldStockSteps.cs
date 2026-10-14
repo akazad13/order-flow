@@ -5,6 +5,7 @@ using OrderFlow.Inventory.Api;
 using OrderFlow.Inventory.ComponentTests.Support;
 using OrderFlow.Inventory.Consumers;
 using OrderFlow.Inventory.Domain;
+using OrderFlow.Testing;
 using Reqnroll;
 using Shouldly;
 
@@ -62,11 +63,10 @@ public sealed class HoldStockSteps(InventoryServiceFactory service)
         await service.Harness.Bus.Publish(placement);
         _placementsSent++;
 
-        var consumed = await service.Harness.GetConsumerHarness<OrderPlacedConsumer>().Consumed
-            .SelectAsync<OrderPlaced>(m => m.Context.Message.OrderId == _orderId)
-            .Take(_placementsSent)
-            .CountAsync();
-        consumed.ShouldBe(_placementsSent);
+        var consumer = service.Harness.GetConsumerHarness<OrderPlacedConsumer>();
+        await Eventually.True(
+            () => consumer.Consumed.Select<OrderPlaced>(m => m.Context.Message.OrderId == _orderId).Count() >= _placementsSent,
+            $"{_placementsSent} OrderPlaced consumed");
     }
 
     [Given("the catalog has:")]
@@ -93,13 +93,13 @@ public sealed class HoldStockSteps(InventoryServiceFactory service)
         await service.Harness.Bus.Publish(new OrderPlaced(_orderId, "customer-1", lines, DateTimeOffset.UtcNow));
 
         var consumer = service.Harness.GetConsumerHarness<OrderPlacedConsumer>();
-        (await consumer.Consumed.Any<OrderPlaced>(m => m.Context.Message.OrderId == _orderId)).ShouldBeTrue();
+        await Eventually.True(() => consumer.Consumed.Select<OrderPlaced>(m => m.Context.Message.OrderId == _orderId).Any(), "OrderPlaced (Consumed)");
     }
 
     [Then(@"^StockReserved is published for that order with a total of (\d+\.\d{2})$")]
     public async Task ThenStockReservedIsPublished(string total)
     {
-        (await service.Harness.Published.Any<StockReserved>(m => m.Context.Message.OrderId == _orderId)).ShouldBeTrue();
+        await Eventually.True(() => service.Harness.Published.Select<StockReserved>(m => m.Context.Message.OrderId == _orderId).Any(), "StockReserved (Published)");
         _reserved = service.Harness.Published.Select<StockReserved>(m => m.Context.Message.OrderId == _orderId).Single().Context.Message;
         _reserved.Total.ShouldBe(Money(total));
     }
@@ -128,7 +128,7 @@ public sealed class HoldStockSteps(InventoryServiceFactory service)
     [Then("StockRejected is published for that order with shortages:")]
     public async Task ThenStockRejectedIsPublished(DataTable table)
     {
-        (await service.Harness.Published.Any<StockRejected>(m => m.Context.Message.OrderId == _orderId)).ShouldBeTrue();
+        await Eventually.True(() => service.Harness.Published.Select<StockRejected>(m => m.Context.Message.OrderId == _orderId).Any(), "StockRejected (Published)");
         var rejected = service.Harness.Published.Select<StockRejected>(m => m.Context.Message.OrderId == _orderId).Single().Context.Message;
 
         var expected = table.Rows.Select(r => new StockShortage(r["sku"], Int(r["requested"]), Int(r["available"]))).ToList();
@@ -147,7 +147,7 @@ public sealed class HoldStockSteps(InventoryServiceFactory service)
         _lastPlaced = new OrderPlaced(_orderId, "customer-1", [new OrderPlacedLine(sku, quantity)], DateTimeOffset.UtcNow);
         await service.Harness.Bus.Publish(_lastPlaced);
         _placementsSent++;
-        (await service.Harness.Published.Any<StockReserved>(m => m.Context.Message.OrderId == _orderId)).ShouldBeTrue();
+        await Eventually.True(() => service.Harness.Published.Select<StockReserved>(m => m.Context.Message.OrderId == _orderId).Any(), "StockReserved (Published)");
     }
 
     [When("the order is cancelled")]
@@ -166,7 +166,7 @@ public sealed class HoldStockSteps(InventoryServiceFactory service)
     [Then("StockReleased is published for that order with {int} of {string}")]
     public async Task ThenStockReleasedIsPublished(int quantity, string sku)
     {
-        (await service.Harness.Published.Any<StockReleased>(m => m.Context.Message.OrderId == _orderId)).ShouldBeTrue();
+        await Eventually.True(() => service.Harness.Published.Select<StockReleased>(m => m.Context.Message.OrderId == _orderId).Any(), "StockReleased (Published)");
         var released = service.Harness.Published.Select<StockReleased>(m => m.Context.Message.OrderId == _orderId).Single().Context.Message;
 
         released.Lines.ShouldBe([new StockReleasedLine(sku, quantity)]);
@@ -192,8 +192,9 @@ public sealed class HoldStockSteps(InventoryServiceFactory service)
         }
 
         var consumer = service.Harness.GetConsumerHarness<OrderCancelledConsumer>();
-        var consumed = await consumer.Consumed.SelectAsync<OrderCancelled>(m => m.Context.Message.OrderId == orderId).Take(times).CountAsync();
-        consumed.ShouldBe(times);
+        await Eventually.True(
+            () => consumer.Consumed.Select<OrderCancelled>(m => m.Context.Message.OrderId == orderId).Count() >= times,
+            $"{times} OrderCancelled consumed");
     }
 
     private static int Int(string value) => int.Parse(value, CultureInfo.InvariantCulture);

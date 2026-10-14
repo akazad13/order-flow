@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using OrderFlow.Contracts.Events;
 using OrderFlow.OrderService.Api;
 using OrderFlow.OrderService.ComponentTests.Support;
+using OrderFlow.Testing;
 using Reqnroll;
 using Shouldly;
 
@@ -32,11 +33,8 @@ public sealed class PlaceOrderSteps(OrderServiceFactory service)
     }
 
     [Then("an OrderPlaced event is published for that order")]
-    public async Task ThenAnOrderPlacedEventIsPublished()
-    {
-        var published = await service.Harness.Published.Any<OrderPlaced>(m => m.Context.Message.OrderId == _order!.OrderId);
-        published.ShouldBeTrue();
-    }
+    public Task ThenAnOrderPlacedEventIsPublished() =>
+        Eventually.True(() => service.Harness.Published.Select<OrderPlaced>(m => m.Context.Message.OrderId == _order!.OrderId).Any(), "OrderPlaced (Published)");
 
     [Then("the order is rejected with an error for {string}")]
     public async Task ThenTheOrderIsRejected(string field)

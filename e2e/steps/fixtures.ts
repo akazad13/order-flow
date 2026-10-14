@@ -6,11 +6,15 @@ import { test as base, createBdd } from 'playwright-bdd';
 type Scenario = {
   customerId: string;
   sku?: string;
+  /** GET /order-api/orders/{id} requests the page made (spec 005: pushed, not polled). */
+  orderReads: string[];
+  /** Text frames the page received on the order hub's WebSocket. */
+  hubFrames: string[];
 };
 
 export const test = base.extend<{ scenario: Scenario }>({
   scenario: async ({}, use) => {
-    await use({ customerId: `e2e-${randomUUID()}` });
+    await use({ customerId: `e2e-${randomUUID()}`, orderReads: [], hubFrames: [] });
   },
 });
 
