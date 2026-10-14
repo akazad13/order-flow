@@ -107,10 +107,10 @@ A nightly workflow (`.github/workflows/nightly.yml`) repeats E2E ten times and r
 
 | Service | URL |
 | --- | --- |
-| Web UI | http://localhost:5180 (log in as `alice` / `alice`, a demo customer, or `sam` / `sam`, a demo member of staff who can look up and cancel any order; spec 015) |
+| Web UI | http://localhost:5180 (log in as `alice` / `alice`, a demo customer, `sam` / `sam`, a demo member of staff who can look up and cancel any order (spec 015), or `ada` / `ada`, a demo admin who manages stock (spec 017)) |
 | Keycloak (logins, spec 012) | http://localhost:8180 (admin console: admin / admin; realm `orderflow`) |
 | Order API | http://localhost:5101 |
-| Inventory (`GET /stock`; `PUT /stock/{sku}` for tests) | http://localhost:5102 |
+| Inventory (`GET /stock`; `PUT /stock/{sku}` for admins, spec 017) | http://localhost:5102 |
 | Payment | http://localhost:5103 |
 | Notification (fake inbox) | http://localhost:5104 |
 | Second copies, with `docker-compose.copies.yml` (spec 013) | http://localhost:5111 to 5114 (Order, Inventory, Payment, Notification) |

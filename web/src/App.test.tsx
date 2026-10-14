@@ -45,7 +45,7 @@ describe('App', () => {
     vi.mocked(clients.getInbox).mockResolvedValue([]);
     vi.mocked(clients.getOrder).mockResolvedValue(pending);
     vi.mocked(watchOrder).mockImplementation(() => vi.fn());
-    vi.mocked(currentCustomer).mockResolvedValue({ id: 'customer-1', name: 'alice', isStaff: false });
+    vi.mocked(currentCustomer).mockResolvedValue({ id: 'customer-1', name: 'alice', isStaff: false, isAdmin: false });
     vi.mocked(onLoginChanged).mockImplementation(() => () => undefined);
   });
 
@@ -210,10 +210,28 @@ describe('App', () => {
     expect(screen.queryByRole('region', { name: 'Staff' })).not.toBeInTheDocument();
     unmount();
 
-    vi.mocked(currentCustomer).mockResolvedValue({ id: 'sam-id', name: 'sam', isStaff: true });
+    vi.mocked(currentCustomer).mockResolvedValue({ id: 'sam-id', name: 'sam', isStaff: true, isAdmin: false });
     render(<App />);
     expect(await screen.findByRole('region', { name: 'Staff' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Place order' })).toBeInTheDocument(); // staff are customers too (R-2)
+  });
+
+  it('shows the stock page to admins only (spec 017, AC-4)', async () => {
+    vi.mocked(clients.listStock).mockResolvedValue([]);
+    const { unmount } = render(<App />);
+    expect(await screen.findByText('Logged in as alice')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Stock' })).not.toBeInTheDocument();
+    unmount();
+
+    vi.mocked(currentCustomer).mockResolvedValue({ id: 'sam-id', name: 'sam', isStaff: true, isAdmin: false });
+    const staff = render(<App />);
+    expect(await screen.findByText('Logged in as sam')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Stock' })).not.toBeInTheDocument();
+    staff.unmount();
+
+    vi.mocked(currentCustomer).mockResolvedValue({ id: 'ada-id', name: 'ada', isStaff: false, isAdmin: true });
+    render(<App />);
+    expect(await screen.findByRole('region', { name: 'Stock' })).toBeInTheDocument();
   });
 
   it('asks to log in again when the login ends on its own (spec 015, AC-7)', async () => {

@@ -20,6 +20,7 @@
     <ReqnrollFeatureFiles Include="..\..\features\component\reject-stock.feature" Link="Features\reject-stock.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\release-stock.feature" Link="Features\release-stock.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\duplicate-order-placed.feature" Link="Features\duplicate-order-placed.feature" />
+    <ReqnrollFeatureFiles Include="..\..\features\component\manage-stock.feature" Link="Features\manage-stock.feature" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,6 +29,8 @@
 
   <ItemGroup>
     <Compile Include="..\Shared\Eventually.cs" Link="Support\Eventually.cs" />
+    <Compile Include="..\Shared\TestTokens.cs" Link="Support\TestTokens.cs" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
   </ItemGroup>
 
 </Project>

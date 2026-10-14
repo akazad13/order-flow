@@ -1,8 +1,11 @@
 openapi: 3.1.0
 info:
   title: OrderFlow Inventory API
-  version: 1.0.0
-  description: Catalog and stock levels. Spec 001.
+  version: 2.0.0
+  description: |
+    Catalog and stock levels. Spec 001. Anyone may look at the catalog; only admins set stock
+    (spec 017): an access token from the `orderflow` Keycloak realm, audience `orderflow-api`,
+    with the realm role `admin` in its `roles` claim.
   contact:
     name: OrderFlow
     url: https://example.com/orderflow
@@ -52,10 +55,12 @@ paths:
     put:
       operationId: setStock
       tags: [stock]
-      summary: Create or replace a catalog item (test only)
+      summary: Create or replace a catalog item (admins)
       description: |
-        Sets the name, unit price and available quantity of a SKU, creating it if needed.
-        Only exposed when `Inventory:EnableTestEndpoints` is true (Development, docker compose); otherwise 404.
+        Sets the name, unit price and available quantity of a SKU, creating it if needed (spec 017).
+        Available is what can still be held for new orders; stock already held is not touched.
+      security:
+        - bearer: []
       requestBody:
         required: true
         content:
@@ -71,7 +76,17 @@ paths:
                 $ref: '#/components/schemas/StockItem'
         '400':
           description: Invalid values.
+        '401':
+          description: No valid login.
+        '403':
+          description: Logged in, but not an admin.
 components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token from Keycloak, realm `orderflow` (ADR 0008).
   schemas:
     StockItem:
       type: object

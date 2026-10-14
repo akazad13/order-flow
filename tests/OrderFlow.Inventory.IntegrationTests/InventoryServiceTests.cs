@@ -7,6 +7,7 @@ using OrderFlow.IntegrationTesting;
 using OrderFlow.Inventory.Api;
 using OrderFlow.Inventory.Domain;
 using OrderFlow.Inventory.Persistence;
+using OrderFlow.Testing;
 
 namespace OrderFlow.Inventory.IntegrationTests;
 
@@ -152,13 +153,15 @@ public sealed class InventoryServiceTests(InfrastructureFixture infrastructure)
         var settings = infrastructure.RabbitSettings(await infrastructure.CreateVirtualHostAsync());
         settings["Persistence:Provider"] = "Postgres";
         settings["ConnectionStrings:Inventory"] = infrastructure.ConnectionString($"inventory_{Guid.NewGuid():N}");
-        settings[StockEndpoints.EnableTestEndpointsKey] = "true";
         return settings;
     }
 
     private static async Task SetStock(HttpClient client, string sku, int available)
     {
-        var response = await client.PutAsJsonAsync($"/stock/{sku}", new SetStockRequest($"Item {sku}", 5.00m, available));
+        // Spec 017: only admins set stock.
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"/stock/{sku}") { Content = JsonContent.Create(new SetStockRequest($"Item {sku}", 5.00m, available)) };
+        request.Headers.Authorization = new("Bearer", TestTokens.Admin("admin-1"));
+        var response = await client.SendAsync(request);
         response.EnsureSuccessStatusCode();
     }
 

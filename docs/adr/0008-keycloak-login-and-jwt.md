@@ -23,4 +23,5 @@ Nobody logged in: the order form took any customer ID, and any order or inbox co
 - One more container, and E2E depends on Keycloak's login page markup (labels "Username or email", "Password", button "Sign In").
 - `start-dev` with `admin`/`admin` is for local and CI only; production would need a real Keycloak setup (HTTPS, a database, secrets).
 - Service-to-service messages over RabbitMQ stay unauthenticated (non-goal).
-- Spec 015 adds the realm role `staff`, written into the tokens as a flat `roles` claim by a mapper on `orderflow-web`, and token renewal with the refresh token in the web app. A change to the realm file needs Keycloak recreated in dev (`--import-realm` skips an existing realm).
+- Spec 015 adds the realm role `staff`, written into the tokens as a flat `roles` claim by a mapper on `orderflow-web`, and token renewal with the refresh token in the web app. A change to the realm file needs Keycloak recreated in dev (`--import-realm` skips an existing realm); recreating it also changes its signing keys, so restart the services afterwards (they fetch new keys at most once per 5 minutes).
+- Spec 017 adds the realm role `admin` (manages stock), and `orderflow-e2e`, a client for E2E that gets admin tokens with its own secret (client credentials). Its secret is in the realm file, which is for dev and CI only.

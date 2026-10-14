@@ -71,14 +71,15 @@ What the table says:
 - Contracts follow semantic versioning from 1.0.0, and CI fails a breaking change without a new major version ([spec 014](../specs/014-contract-compatibility/spec.md), ADR 0009). Run over history, the gate found that spec 006 changed two contracts without a new version and edited a published event.
 - Staff can look up and cancel any order on the customer's behalf, and logins renew themselves before the token expires ([spec 015](../specs/015-staff-and-token-refresh/spec.md)).
 - A new version of an event is a new message that readers learn before it is published (ADR 0010); `OrderCancelled` v2 gives staff cancellations their own reason ([spec 016](../specs/016-event-versions/spec.md)).
+- Admins manage stock on a stock page; setting stock is no longer a test-only endpoint ([spec 017](../specs/017-admin-manages-stock/spec.md)).
 
 ## Still open
 
 | Item | Why it matters | Where |
 | --- | --- | --- |
 | Push to GitHub, see CI green, protect `main` with the CI jobs | Every gate here only bites in CI | Spec 000, T15 (deferred) |
-| Review the decisions taken on the user's behalf (43 of 45 recorded; the user answered 2) | Product choices (cancel rules, refund wording, push vs. poll) | `grep -n "\[x\] \*\*Q" specs/*/spec.md` |
+| Review the decisions taken on the user's behalf (50 of 53 recorded; the user answered 3) | Product choices (cancel rules, refund wording, push vs. poll) | `grep -n "\[x\] \*\*Q" specs/*/spec.md` |
 | Retire `OrderCancelled` v1 | Every reader still carries it; ADR 0010 says when it may go | Spec 016 non-goals |
 | Stock decisions (`reservations`) and finished order trackers (`OrderState`) are never deleted | Kept on purpose: they are what makes a late repeat harmless (spec 004). Removing them needs a retention window longer than any redelivery. Outbox and inbox tables are not a problem: MassTransit deletes delivered messages and its `InboxCleanupService` removes processed ones after the duplicate-detection window | Spec 004 non-goal |
-| An admin role, staff reading inboxes, a production Keycloak (HTTPS, database, secrets) | Staff and token renewal exist since spec 015, in dev mode | Spec 015 non-goals, ADR 0008 |
+| Staff reading inboxes, a production Keycloak (HTTPS, database, secrets, no test client) | Staff, admins and token renewal exist since specs 015 and 017, in dev mode | Specs 015 and 017 non-goals, ADR 0008 |
 | Starting and stopping copies automatically; the web server noticing copies started after it | Two copies of each service run since spec 013, but a fixed number, set in compose | Spec 013 non-goals |

@@ -29,6 +29,9 @@ internal static class TestTokens
     /// <summary>A member of staff (spec 015): a login with the realm role "staff".</summary>
     public static string Staff(string userId) => For(userId, "staff");
 
+    /// <summary>An admin (spec 017): a login with the realm role "admin".</summary>
+    public static string Admin(string userId) => For(userId, "admin");
+
     /// <summary>Tokens that must be refused (spec 012, AC-5), by name as the scenarios say it.</summary>
     public static string Bad(string customerId, string problem) => problem switch
     {

@@ -48,6 +48,8 @@ builder.AddOrderFlowServiceDefaults("inventory", bus =>
     }
 });
 
+builder.AddOrderFlowAuthentication(); // admins set stock (spec 017, ADR 0008)
+
 var app = builder.Build();
 
 if (usePostgres)
@@ -64,7 +66,7 @@ if (usePostgres)
 }
 
 app.MapOrderFlowDefaults();
-app.MapStockEndpoints(app.Configuration);
+app.MapStockEndpoints();
 
 app.Run();
 

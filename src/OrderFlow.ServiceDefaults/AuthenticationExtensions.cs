@@ -23,6 +23,9 @@ public static class AuthenticationExtensions
     /// <summary>The Keycloak realm role for staff (spec 015), in the tokens' flat "roles" claim.</summary>
     public const string StaffRole = "staff";
 
+    /// <summary>The Keycloak realm role for admins, who manage stock (spec 017). Separate from staff (R-2).</summary>
+    public const string AdminRole = "admin";
+
     public static IHostApplicationBuilder AddOrderFlowAuthentication(this IHostApplicationBuilder builder)
     {
         var auth = builder.Configuration.GetSection("Auth");

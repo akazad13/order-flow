@@ -3,6 +3,7 @@ import { cancelOrder, getInbox, getOrder, placeOrder, type InboxMessage, type Or
 import { watchOrder } from './api/live';
 import { currentCustomer, logIn, logOut, onLoginChanged, type Customer } from './auth';
 import { StaffLookup } from './StaffLookup';
+import { StockAdmin } from './StockAdmin';
 
 // The inbox is still polled; order status is pushed (spec 005).
 export const POLL_MS = 1000;
@@ -132,6 +133,8 @@ export function App() {
       )}
 
       {customer?.isStaff && <StaffLookup />}
+
+      {customer?.isAdmin && <StockAdmin />}
 
       {customer && (
       <form onSubmit={handleSubmit}>

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect } from '@playwright/test';
-import { Given, Then, When, createCustomer, inventoryUrl, logIn, paymentUrl } from './fixtures';
+import { Given, Then, When, adminToken, createCustomer, inventoryUrl, logIn, paymentUrl } from './fixtures';
 
 // The flow is asynchronous (broker in the middle): rely on Playwright's
 // auto-retrying expect with a timeout, never on fixed sleeps.
@@ -8,7 +8,9 @@ const EVENTUAL_TIMEOUT_MS = 15_000;
 
 Given('an item priced {float} with {int} in stock', async ({ request, scenario }, unitPrice: number, available: number) => {
   scenario.sku = `E2E-${randomUUID().slice(0, 8).toUpperCase()}`;
+  // Only admins set stock (spec 017).
   const response = await request.put(`${inventoryUrl}/stock/${scenario.sku}`, {
+    headers: { Authorization: `Bearer ${await adminToken(request)}` },
     data: { name: `E2E item ${scenario.sku}`, unitPrice, available },
   });
   expect(response.ok()).toBeTruthy();

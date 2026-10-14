@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "gen:api": "openapi-typescript ../contracts/http/order.openapi.yaml -o src/api/order-api.d.ts && openapi-typescript ../contracts/http/notification.openapi.yaml -o src/api/notification-api.d.ts"
+    "gen:api": "openapi-typescript ../contracts/http/order.openapi.yaml -o src/api/order-api.d.ts && openapi-typescript ../contracts/http/notification.openapi.yaml -o src/api/notification-api.d.ts && openapi-typescript ../contracts/http/inventory.openapi.yaml -o src/api/inventory-api.d.ts"
   },
   "dependencies": {
     "@microsoft/signalr": "^10.0.11",

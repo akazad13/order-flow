@@ -37,7 +37,7 @@ public sealed class HoldStockSteps(InventoryServiceFactory service)
     [When("the stock of {string} is refilled to {int}")]
     public async Task WhenTheStockIsRefilled(string sku, int available)
     {
-        var response = await service.CreateClient().PutAsJsonAsync($"/stock/{sku}", new SetStockRequest("Refilled item", 6.25m, available));
+        var response = await service.AdminClient().PutAsJsonAsync($"/stock/{sku}", new SetStockRequest("Refilled item", 6.25m, available));
         response.EnsureSuccessStatusCode();
     }
 
@@ -72,7 +72,7 @@ public sealed class HoldStockSteps(InventoryServiceFactory service)
     [Given("the catalog has:")]
     public async Task GivenTheCatalogHas(DataTable table)
     {
-        var client = service.CreateClient();
+        var client = service.AdminClient(); // spec 017
         foreach (var row in table.Rows)
         {
             var response = await client.PutAsJsonAsync($"/stock/{row["sku"]}", new SetStockRequest(

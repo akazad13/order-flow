@@ -1,4 +1,5 @@
 using OrderFlow.Inventory.Domain;
+using OrderFlow.ServiceDefaults;
 
 namespace OrderFlow.Inventory.Api;
 
@@ -7,21 +8,20 @@ public sealed record SetStockRequest(string? Name, decimal UnitPrice, int Availa
 
 public static class StockEndpoints
 {
-    public const string EnableTestEndpointsKey = "Inventory:EnableTestEndpoints";
-
-    public static IEndpointRouteBuilder MapStockEndpoints(this IEndpointRouteBuilder app, IConfiguration configuration)
+    public static IEndpointRouteBuilder MapStockEndpoints(this IEndpointRouteBuilder app)
     {
+        // Looking at the catalog is open to everyone (spec 017, AC-3).
         app.MapGet("/stock", async (ICatalogStore catalog, CancellationToken ct) => Results.Ok(await catalog.ListAsync(ct)))
             .WithName("listStock");
 
         app.MapGet("/stock/{sku}", async (string sku, ICatalogStore catalog, CancellationToken ct) =>
             await catalog.GetAsync(sku, ct) is { } item ? Results.Ok(item) : Results.NotFound()).WithName("getStock");
 
-        // Test-only: lets tests and demos set exact stock levels (spec 001, Q4).
-        if (configuration.GetValue<bool>(EnableTestEndpointsKey))
-        {
-            app.MapPut("/stock/{sku}", SetStock).WithName("setStock");
-        }
+        // Admins set an item's name, price and quantity available (spec 017): no login 401, not an admin 403.
+        // Until spec 017 this was a test-only endpoint behind Inventory:EnableTestEndpoints (spec 001, Q4).
+        app.MapPut("/stock/{sku}", SetStock)
+            .WithName("setStock")
+            .RequireAuthorization(policy => policy.RequireRole(AuthenticationExtensions.AdminRole));
 
         return app;
     }

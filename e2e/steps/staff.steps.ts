@@ -4,23 +4,23 @@ import { Given, Then, When, createUser, endSessions, logIn, storedToken } from '
 
 // Spec 015: staff support customers' orders, and logins renew themselves.
 
-When('a member of staff looks up that order', async ({ page, staffPage, request }) => {
+When('a member of staff looks up that order', async ({ page, shopPage, request }) => {
   const order = page.getByRole('region', { name: 'Order' });
   await expect(order).toContainText('Status: Pending');
   const orderId = (await order.locator('code').first().textContent())!.trim();
 
   const staff = { username: `e2e-staff-${randomUUID().slice(0, 8)}`, password: randomUUID() };
   await createUser(request, staff, ['staff']);
-  await staffPage.goto('/');
-  await logIn(staffPage, staff);
+  await shopPage.goto('/');
+  await logIn(shopPage, staff);
 
-  await staffPage.getByLabel('Order ID').fill(orderId);
-  await staffPage.getByRole('button', { name: 'Look up' }).click();
-  await expect(staffPage.getByRole('group', { name: 'Looked-up order' })).toContainText('Status: Pending');
+  await shopPage.getByLabel('Order ID').fill(orderId);
+  await shopPage.getByRole('button', { name: 'Look up' }).click();
+  await expect(shopPage.getByRole('group', { name: 'Looked-up order' })).toContainText('Status: Pending');
 });
 
-When('the member of staff cancels it for the customer', async ({ staffPage }) => {
-  const order = staffPage.getByRole('group', { name: 'Looked-up order' });
+When('the member of staff cancels it for the customer', async ({ shopPage }) => {
+  const order = shopPage.getByRole('group', { name: 'Looked-up order' });
   await order.getByRole('button', { name: 'Cancel for the customer' }).click();
   await expect(order).toContainText('Status: Cancelled', { timeout: 15_000 });
 });

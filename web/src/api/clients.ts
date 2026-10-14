@@ -2,11 +2,17 @@ import createClient, { type Middleware } from 'openapi-fetch';
 import { accessToken } from '../auth';
 import type { components as OrderComponents, paths as OrderPaths } from './order-api';
 import type { components as NotificationComponents, paths as NotificationPaths } from './notification-api';
+import type { components as InventoryComponents, paths as InventoryPaths } from './inventory-api';
 
 // Types are generated from contracts/http/*.openapi.yaml (npm run gen:api); never edit them by hand.
 export type Order = OrderComponents['schemas']['Order'];
 export type ValidationProblem = OrderComponents['schemas']['ValidationProblem'];
 export type InboxMessage = NotificationComponents['schemas']['InboxMessage'];
+export type StockItem = InventoryComponents['schemas']['StockItem'];
+export type SetStock = InventoryComponents['schemas']['SetStockRequest'];
+
+/** Spec 017: the item as stored, or an error per field. */
+export type SetStockResult = { ok: true; item: StockItem } | { ok: false; errors: string[] };
 
 export type PlaceOrderResult = { ok: true; order: Order } | { ok: false; problem: ValidationProblem };
 
@@ -97,4 +103,24 @@ export async function getInbox(customerId: string): Promise<InboxMessage[]> {
     params: { path: { customerId } },
   });
   return data ?? [];
+}
+
+const inventoryApi = createClient<InventoryPaths>({ baseUrl: '/inventory-api' });
+inventoryApi.use(bearer(accessToken));
+
+/** The catalog, open to everyone (spec 017, AC-3). */
+export async function listStock(): Promise<StockItem[]> {
+  const { data } = await inventoryApi.GET('/stock');
+  return data ?? [];
+}
+
+/** Admins only (spec 017): sets an item's name, price and quantity available, adding it if new. */
+export async function setStock(sku: string, item: SetStock): Promise<SetStockResult> {
+  const { data, error, response } = await inventoryApi.PUT('/stock/{sku}', { params: { path: { sku } }, body: item });
+  if (data) return { ok: true, item: data };
+  if (response.status === 400) {
+    const problem = error as { errors?: Record<string, string[]> } | undefined;
+    return { ok: false, errors: Object.values(problem?.errors ?? {}).flat() };
+  }
+  return { ok: false, errors: [response.status === 403 ? 'Only admins can set stock.' : `Could not set stock (${response.status}).`] };
 }

@@ -3,10 +3,10 @@ import { UserManager, WebStorageStateStore, type User } from 'oidc-client-ts';
 /**
  * Customer login (spec 012, ADR 0008): Keycloak, authorization code flow with PKCE.
  * The customer is the token's subject; the API never takes a customer ID from the page.
- * Staff carry the realm role `staff` (spec 015). The access token renews itself with the refresh
+ * Staff carry the realm role `staff` (spec 015), admins the role `admin` (spec 017). The access token renews itself with the refresh
  * token a minute before it expires (spec 015, Q4); if it cannot, the login ends.
  */
-export type Customer = { id: string; name: string; isStaff: boolean };
+export type Customer = { id: string; name: string; isStaff: boolean; isAdmin: boolean };
 
 const authority = import.meta.env.VITE_AUTH_AUTHORITY ?? 'http://localhost:8180/realms/orderflow';
 
@@ -24,6 +24,7 @@ function toCustomer(user: User | null): Customer | null {
     id: user.profile.sub,
     name: user.profile.preferred_username ?? user.profile.sub,
     isStaff: Array.isArray(roles) && roles.includes('staff'),
+    isAdmin: Array.isArray(roles) && roles.includes('admin'), // spec 017
   };
 }
 

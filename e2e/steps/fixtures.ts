@@ -21,13 +21,13 @@ type Scenario = {
 /** Someone who can log in through Keycloak's page. */
 export type Credentials = { username: string; password: string };
 
-export const test = base.extend<{ scenario: Scenario; staffPage: Page }>({
+export const test = base.extend<{ scenario: Scenario; shopPage: Page }>({
   scenario: async ({}, use) => {
     const username = `e2e-${randomUUID().slice(0, 13)}`;
     await use({ customerId: '', username, password: randomUUID(), orderReads: [], hubFrames: [] });
   },
-  // A second browser, for a member of staff working next to the customer (spec 015).
-  staffPage: async ({ browser, baseURL }, use) => {
+  // A second browser, for someone working at the shop next to the customer: staff (spec 015) or an admin (spec 017).
+  shopPage: async ({ browser, baseURL }, use) => {
     const context = await browser.newContext({ baseURL });
     await use(await context.newPage());
     await context.close();
@@ -42,6 +42,18 @@ export const keycloakUrl = process.env.KEYCLOAK_URL ?? 'http://localhost:8180';
 
 // Keycloak's dev admin from docker-compose.yml (local and CI only, ADR 0008).
 const keycloakAdmin = { username: process.env.KEYCLOAK_ADMIN ?? 'admin', password: process.env.KEYCLOAK_ADMIN_PASSWORD ?? 'admin' };
+
+// The dev-realm client for tests, holding the realm role `admin` (spec 017, Q3). Never in production.
+const e2eClient = { id: process.env.E2E_CLIENT_ID ?? 'orderflow-e2e', secret: process.env.E2E_CLIENT_SECRET ?? 'orderflow-e2e-secret' };
+
+/** An admin's access token, for setting stock through the API (spec 017). */
+export async function adminToken(request: APIRequestContext): Promise<string> {
+  const response = await request.post(`${keycloakUrl}/realms/orderflow/protocol/openid-connect/token`, {
+    form: { grant_type: 'client_credentials', client_id: e2eClient.id, client_secret: e2eClient.secret },
+  });
+  expect(response.ok()).toBeTruthy();
+  return (await response.json()).access_token;
+}
 
 /** Calls Keycloak's admin API (realm `orderflow`) as the dev admin. */
 async function keycloakAdminApi(request: APIRequestContext) {
