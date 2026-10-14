@@ -15,7 +15,7 @@ public interface IOrderUpdatesClient
 /// <summary>
 /// Live order status (spec 005). A client joins one group per watched order. Changes made
 /// before it joined are not replayed: the client reads the order once after joining (AC-3).
-/// Connecting needs a login, and only the order's customer may watch it (spec 012).
+/// Connecting needs a login, and only the order's customer, or staff, may watch it (specs 012, 015).
 /// </summary>
 [Authorize]
 public sealed class OrderUpdatesHub(IOrderRepository orders) : Hub<IOrderUpdatesClient>
@@ -24,8 +24,8 @@ public sealed class OrderUpdatesHub(IOrderRepository orders) : Hub<IOrderUpdates
 
     public async Task WatchOrder(Guid orderId)
     {
-        // Someone else's order is refused exactly like an unknown one (spec 012, R-2).
-        if (await orders.FindOwnAsync(orderId, Context.User!, Context.ConnectionAborted) is null)
+        // Someone else's order is refused exactly like an unknown one (spec 012, R-2), unless the caller is staff (spec 015).
+        if (await orders.FindAllowedAsync(orderId, Context.User!, Context.ConnectionAborted) is null)
         {
             throw new HubException("Order not found.");
         }

@@ -24,6 +24,10 @@ public sealed class CustomerCancelSteps(OrderServiceFactory service, OrderLifecy
     public async Task WhenTheCustomerAsksToCancel() =>
         _response = await service.ClientFor(lifecycle.Placed.CustomerId).PostAsync($"/orders/{lifecycle.Placed.OrderId}/cancellation", null);
 
+    [When("staff member {string} asks to cancel that order")]
+    public async Task WhenStaffAsksToCancel(string userId) =>
+        _response = await service.StaffClient(userId).PostAsync($"/orders/{lifecycle.Placed.OrderId}/cancellation", null);
+
     [When("the customer has cancelled that order")]
     public async Task WhenTheCustomerHasCancelled()
     {

@@ -47,6 +47,8 @@ public class EventSchemaContractTests
         },
         { "stock-released.v1.json", new StockReleased(Guid.NewGuid(), [new StockReleasedLine("SKU-001", 3)], DateTimeOffset.UtcNow) },
         { "order-cancellation-requested.v1.json", new OrderCancellationRequested(Guid.NewGuid(), DateTimeOffset.UtcNow) },
+        { "order-cancellation-requested.v1.json", new OrderCancellationRequested(Guid.NewGuid(), DateTimeOffset.UtcNow, CancellationRequesters.Customer) },
+        { "order-cancellation-requested.v1.json", new OrderCancellationRequested(Guid.NewGuid(), DateTimeOffset.UtcNow, CancellationRequesters.Staff) },
         { "payment-refunded.v1.json", new PaymentRefunded(Guid.NewGuid(), "customer-1", Guid.NewGuid(), 37.00m, DateTimeOffset.UtcNow) },
     };
 

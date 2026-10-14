@@ -23,8 +23,11 @@ internal static class TestTokens
     private static readonly SymmetricSecurityKey Key = new(Encoding.UTF8.GetBytes("orderflow-test-signing-key-tests-only-0001"));
     private static readonly SymmetricSecurityKey OtherKey = new(Encoding.UTF8.GetBytes("someone-elses-signing-key-tests-only-0002"));
 
-    /// <summary>A valid access token for the customer (the token's subject is the customer ID).</summary>
-    public static string For(string customerId) => Create(customerId, Key, Issuer, Audience, DateTime.UtcNow.AddMinutes(10));
+    /// <summary>A valid access token for the customer (the token's subject is the customer ID), with realm roles in "roles" as Keycloak's mapper writes them (spec 015).</summary>
+    public static string For(string customerId, params string[] roles) => Create(customerId, Key, Issuer, Audience, DateTime.UtcNow.AddMinutes(10), roles);
+
+    /// <summary>A member of staff (spec 015): a login with the realm role "staff".</summary>
+    public static string Staff(string userId) => For(userId, "staff");
 
     /// <summary>Tokens that must be refused (spec 012, AC-5), by name as the scenarios say it.</summary>
     public static string Bad(string customerId, string problem) => problem switch
@@ -58,10 +61,10 @@ internal static class TestTokens
         return client;
     }
 
-    private static string Create(string customerId, SecurityKey key, string issuer, string audience, DateTime expires) =>
+    private static string Create(string customerId, SecurityKey key, string issuer, string audience, DateTime expires, string[]? roles = null) =>
         new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
-            Subject = new ClaimsIdentity([new Claim("sub", customerId), new Claim("preferred_username", customerId)]),
+            Subject = new ClaimsIdentity([new Claim("sub", customerId), new Claim("preferred_username", customerId), .. (roles ?? []).Select(r => new Claim("roles", r))]),
             Issuer = issuer,
             Audience = audience,
             NotBefore = expires.AddMinutes(-30),

@@ -20,13 +20,14 @@ public static class OrderEndpoints
     }
 
     /// <summary>
-    /// The order, if it belongs to the logged-in customer. Someone else's order is treated exactly
-    /// like one that does not exist, so order IDs reveal nothing (spec 012, R-2).
+    /// The order, if the logged-in user may see it: their own, or any order for staff (spec 015).
+    /// For a customer, someone else's order is treated exactly like one that does not exist, so
+    /// order IDs reveal nothing (spec 012, R-2).
     /// </summary>
-    public static async Task<Order?> FindOwnAsync(this IOrderRepository orders, Guid orderId, ClaimsPrincipal user, CancellationToken cancellationToken)
+    public static async Task<Order?> FindAllowedAsync(this IOrderRepository orders, Guid orderId, ClaimsPrincipal user, CancellationToken cancellationToken)
     {
         var order = await orders.GetAsync(orderId, cancellationToken);
-        return order?.CustomerId == user.CustomerId() ? order : null;
+        return order is not null && (order.CustomerId == user.CustomerId() || user.IsStaff()) ? order : null;
     }
 
     private static async Task<IResult> PlaceOrder(
@@ -62,8 +63,8 @@ public static class OrderEndpoints
     }
 
     /// <summary>
-    /// Spec 006. Records the customer's request; the state machine decides (R-1), so a Pending
-    /// order gets 202 and the outcome is pushed to watchers (spec 005).
+    /// Spec 006. Records the customer's request, or staff's on their behalf (spec 015); the state
+    /// machine decides (R-1), so a Pending order gets 202 and the outcome is pushed to watchers (spec 005).
     /// </summary>
     private static async Task<IResult> CancelOrder(
         Guid orderId,
@@ -73,7 +74,7 @@ public static class OrderEndpoints
         TimeProvider clock,
         CancellationToken cancellationToken)
     {
-        var order = await orders.FindOwnAsync(orderId, user, cancellationToken);
+        var order = await orders.FindAllowedAsync(orderId, user, cancellationToken);
         switch (order?.Status)
         {
             case null:
@@ -90,7 +91,9 @@ public static class OrderEndpoints
 
             default:
                 // Postgres: the bus outbox stores the request; SaveChanges commits and delivers it.
-                await publisher.Publish(new OrderCancellationRequested(order.Id, clock.GetUtcNow()), cancellationToken);
+                // Staff cancelling their own order do so as its customer (spec 015, R-2).
+                var requestedBy = order.CustomerId == user.CustomerId() ? CancellationRequesters.Customer : CancellationRequesters.Staff;
+                await publisher.Publish(new OrderCancellationRequested(order.Id, clock.GetUtcNow(), requestedBy), cancellationToken);
                 await orders.SaveChangesAsync(cancellationToken);
                 return Results.Accepted($"/orders/{order.Id}", OrderResponse.From(order));
         }
@@ -98,7 +101,7 @@ public static class OrderEndpoints
 
     private static async Task<IResult> GetOrder(Guid orderId, ClaimsPrincipal user, IOrderRepository orders, CancellationToken cancellationToken)
     {
-        var order = await orders.FindOwnAsync(orderId, user, cancellationToken);
+        var order = await orders.FindAllowedAsync(orderId, user, cancellationToken);
         return order is null ? Results.NotFound() : Results.Ok(OrderResponse.From(order));
     }
 }

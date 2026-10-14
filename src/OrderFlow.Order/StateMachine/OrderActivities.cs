@@ -85,9 +85,13 @@ public sealed class CancelAtCustomerRequestActivity(IOrderRepository orders, Tim
 {
     public const string Detail = "Cancelled at the customer's request.";
 
+    /// <summary>Staff cancel on the customer's behalf: same reason, and the detail says who (spec 015, R-1).</summary>
+    public const string StaffDetail = "Cancelled by our support team at the customer's request.";
+
     public async Task Execute(BehaviorContext<OrderState, OrderCancellationRequested> context, IBehavior<OrderState, OrderCancellationRequested> next)
     {
-        await OrderCancellation.Cancel(context, orders, clock, context.Message.OrderId, CancellationReasons.CustomerRequested, Detail);
+        var detail = context.Message.RequestedBy == CancellationRequesters.Staff ? StaffDetail : Detail;
+        await OrderCancellation.Cancel(context, orders, clock, context.Message.OrderId, CancellationReasons.CustomerRequested, detail);
         await next.Execute(context);
     }
 

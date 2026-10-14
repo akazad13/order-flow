@@ -23,7 +23,7 @@ A customer who changes their mind has no way out: the order runs to Confirmed or
 - **AC-5 No money kept.** A payment not yet taken is never taken. A payment already taken is refunded once, and the refund is announced.
 - **AC-6 Confirmation and cancellation race.** If the payment succeeds while the cancellation is being handled, the order ends either Confirmed or Cancelled, never both: exactly one of "confirmed" and "cancelled" is announced, and the order's status matches it.
 - **AC-7 Customer is told.** The inbox shows "Your order was cancelled at your request", and after a refund "Your payment of 37.00 was refunded".
-- **AC-8 Customer does it in the UI.** While the order is Pending the page offers "Cancel order". After cancelling, the customer sees the status Cancelled and the reason "you cancelled it" within 10 seconds, without reloading. If it was too late, they are told the order is already confirmed.
+- **AC-8 Customer does it in the UI.** While the order is Pending the page offers "Cancel order". After cancelling, the customer sees the status Cancelled and the reason "you cancelled it" within 10 seconds, without reloading. (Amended by [spec 015](../015-staff-and-token-refresh/spec.md): the words are now "cancelled at your request", true whether the customer or support pressed the button.) If it was too late, they are told the order is already confirmed.
 
 ## Business rules
 

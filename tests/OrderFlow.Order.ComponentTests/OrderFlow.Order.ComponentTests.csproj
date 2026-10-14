@@ -25,6 +25,7 @@
     <ReqnrollFeatureFiles Include="..\..\features\component\live-order-updates.feature" Link="Features\live-order-updates.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\customer-cancel.feature" Link="Features\customer-cancel.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\order-access.feature" Link="Features\order-access.feature" />
+    <ReqnrollFeatureFiles Include="..\..\features\component\staff-orders.feature" Link="Features\staff-orders.feature" />
   </ItemGroup>
 
   <ItemGroup>

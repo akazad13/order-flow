@@ -22,4 +22,7 @@ public sealed class OrderServiceFactory : WebApplicationFactory<Program>
 
     /// <summary>An API client logged in as the customer (spec 012).</summary>
     public HttpClient ClientFor(string customerId) => CreateClient().LoggedInAs(customerId);
+
+    /// <summary>An API client logged in as a member of staff (spec 015).</summary>
+    public HttpClient StaffClient(string userId) => CreateClient().WithToken(TestTokens.Staff(userId));
 }

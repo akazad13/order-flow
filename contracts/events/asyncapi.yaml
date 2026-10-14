@@ -1,7 +1,7 @@
 asyncapi: 3.1.0
 info:
   title: OrderFlow events
-  version: 1.0.0
+  version: 1.1.0
   description: |
     Events exchanged between OrderFlow services over RabbitMQ (MassTransit v8).
     MassTransit wraps each payload in an envelope; the schemas below describe the
@@ -232,7 +232,7 @@ operations:
       - $ref: '#/channels/orderCancelled/messages/OrderCancelled'
   publishOrderCancellationRequested:
     action: send
-    summary: The Order API records a customer's request to cancel.
+    summary: The Order API records a customer's request to cancel, or staff's on their behalf (spec 015).
     channel:
       $ref: '#/channels/orderCancellationRequested'
     messages:

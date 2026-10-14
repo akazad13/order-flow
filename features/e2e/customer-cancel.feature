@@ -10,7 +10,7 @@ Feature: Customer cancels a pending order
     When they order 2 of that item
     And they cancel the order
     Then they see their order with status "Cancelled" within 10 seconds
-    And they see the reason "you cancelled it"
+    And they see the reason "cancelled at your request"
     And the status was pushed to the page
     And the item has 5 in stock again
     And their inbox shows, in order:

@@ -107,7 +107,7 @@ A nightly workflow (`.github/workflows/nightly.yml`) repeats E2E ten times and r
 
 | Service | URL |
 | --- | --- |
-| Web UI | http://localhost:5180 (log in as `alice` / `alice`, a demo user from the realm file) |
+| Web UI | http://localhost:5180 (log in as `alice` / `alice`, a demo customer, or `sam` / `sam`, a demo member of staff who can look up and cancel any order; spec 015) |
 | Keycloak (logins, spec 012) | http://localhost:8180 (admin console: admin / admin; realm `orderflow`) |
 | Order API | http://localhost:5101 |
 | Inventory (`GET /stock`; `PUT /stock/{sku}` for tests) | http://localhost:5102 |

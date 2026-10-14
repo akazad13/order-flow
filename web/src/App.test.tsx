@@ -5,7 +5,7 @@ import { App } from './App';
 import * as clients from './api/clients';
 import type { Order } from './api/clients';
 import { watchOrder } from './api/live';
-import { currentCustomer, logIn, logOut } from './auth';
+import { currentCustomer, logIn, logOut, onLoginChanged } from './auth';
 
 vi.mock('./api/clients');
 vi.mock('./api/live');
@@ -45,7 +45,8 @@ describe('App', () => {
     vi.mocked(clients.getInbox).mockResolvedValue([]);
     vi.mocked(clients.getOrder).mockResolvedValue(pending);
     vi.mocked(watchOrder).mockImplementation(() => vi.fn());
-    vi.mocked(currentCustomer).mockResolvedValue({ id: 'customer-1', name: 'alice' });
+    vi.mocked(currentCustomer).mockResolvedValue({ id: 'customer-1', name: 'alice', isStaff: false });
+    vi.mocked(onLoginChanged).mockImplementation(() => () => undefined);
   });
 
   afterEach(() => {
@@ -152,7 +153,7 @@ describe('App', () => {
 
     const order = screen.getByRole('region', { name: 'Order' });
     expect(within(order).getByText('Cancelled')).toBeInTheDocument();
-    expect(within(order).getByText('Reason: you cancelled it')).toBeInTheDocument();
+    expect(within(order).getByText('Reason: cancelled at your request')).toBeInTheDocument();
     expect(screen.queryByText('Cancelling...')).not.toBeInTheDocument();
   });
 
@@ -201,6 +202,29 @@ describe('App', () => {
     expect(await screen.findByText('Logged in as alice')).toBeInTheDocument();
     expect(screen.queryByLabelText('Customer ID')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Place order' })).toBeInTheDocument();
+  });
+
+  it('shows the order lookup to staff only (spec 015, AC-5)', async () => {
+    const { unmount } = render(<App />);
+    expect(await screen.findByText('Logged in as alice')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Staff' })).not.toBeInTheDocument();
+    unmount();
+
+    vi.mocked(currentCustomer).mockResolvedValue({ id: 'sam-id', name: 'sam', isStaff: true });
+    render(<App />);
+    expect(await screen.findByRole('region', { name: 'Staff' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Place order' })).toBeInTheDocument(); // staff are customers too (R-2)
+  });
+
+  it('asks to log in again when the login ends on its own (spec 015, AC-7)', async () => {
+    render(<App />);
+    expect(await screen.findByText('Logged in as alice')).toBeInTheDocument();
+
+    const [listener] = vi.mocked(onLoginChanged).mock.calls[0];
+    act(() => listener(null));
+
+    expect(await screen.findByRole('button', { name: 'Log in' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Place order' })).not.toBeInTheDocument();
   });
 
   it('reads the logged-in customer inbox', async () => {

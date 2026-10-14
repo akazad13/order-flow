@@ -37,6 +37,16 @@ public sealed class LiveUpdateSteps(OrderServiceFactory service, OrderLifecycleS
         await _connection.InvokeAsync("WatchOrder", lifecycle.Placed.OrderId);
     }
 
+    [Given("staff member {string} is watching that order")]
+    public async Task GivenStaffIsWatchingThatOrder(string userId)
+    {
+        // Spec 015, AC-3.
+        _connection = Connect(TestTokens.Staff(userId));
+        _connection.On<JsonElement>("OrderUpdated", update => _updates.Writer.TryWrite(update));
+        await _connection.StartAsync();
+        await _connection.InvokeAsync("WatchOrder", lifecycle.Placed.OrderId);
+    }
+
     [Then("a client that is not logged in cannot connect")]
     public async Task ThenAClientThatIsNotLoggedInCannotConnect()
     {

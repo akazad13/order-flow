@@ -36,6 +36,27 @@ public sealed class OrderAccessSteps(OrderServiceFactory service, OrderLifecycle
         _response = await service.ClientFor(customerId).GetAsync($"/orders/{lifecycle.Placed.OrderId}");
     }
 
+    [When("staff member {string} reads that order")]
+    public async Task WhenStaffReadsThatOrder(string userId) =>
+        _response = await service.StaffClient(userId).GetAsync($"/orders/{lifecycle.Placed.OrderId}");
+
+    [When("customer {string} with the role {string} reads that order")]
+    public async Task WhenCustomerWithARoleReadsThatOrder(string customerId, string role)
+    {
+        _caller = customerId;
+        _response = await service.CreateClient().WithToken(TestTokens.For(customerId, role)).GetAsync($"/orders/{lifecycle.Placed.OrderId}");
+    }
+
+    [Then("the answer is that order, placed by customer {string}")]
+    public async Task ThenTheAnswerIsThatOrder(string customerId)
+    {
+        // Spec 015, R-1: staff see the order as it is; it stays the customer's.
+        _response!.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var order = await _response.Content.ReadFromJsonAsync<OrderResponse>();
+        order!.OrderId.ShouldBe(lifecycle.Placed.OrderId);
+        order.CustomerId.ShouldBe(customerId);
+    }
+
     [When("customer {string} asks to cancel that order")]
     public async Task WhenCustomerAsksToCancelThatOrder(string customerId) =>
         _response = await service.ClientFor(customerId).PostAsync($"/orders/{lifecycle.Placed.OrderId}/cancellation", null);

@@ -22,6 +22,14 @@ public sealed class PlaceOrderSteps(OrderServiceFactory service)
         _response = await service.ClientFor(customerId).PostAsJsonAsync("/orders", new PlaceOrderRequest([new OrderLineDto(sku, quantity)]));
     }
 
+    [When("staff member {string} places an order for {int} x {string}")]
+    public async Task WhenStaffPlacesAnOrder(string userId, int quantity, string sku)
+    {
+        _response = await service.StaffClient(userId).PostAsJsonAsync("/orders", new PlaceOrderRequest([new OrderLineDto(sku, quantity)]));
+        _response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        _order = await _response.Content.ReadFromJsonAsync<OrderResponse>();
+    }
+
     [Then("the order is accepted with status {string}")]
     public async Task ThenTheOrderIsAccepted(string status)
     {

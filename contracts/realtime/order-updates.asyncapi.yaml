@@ -1,7 +1,7 @@
 asyncapi: 3.1.0
 info:
   title: OrderFlow live order updates
-  version: 1.0.0
+  version: 1.1.0
   description: |
     SignalR hub in the Order service (spec 005). A client connects, calls `WatchOrder`
     with an order ID, and is then sent `OrderUpdated` whenever that order becomes
@@ -10,7 +10,7 @@ info:
     joined are not replayed.
     Connecting needs a login (spec 012): the access token goes in the `access_token` query
     parameter (SignalR does this for WebSockets). `WatchOrder` for another customer's order
-    fails with "Order not found.", exactly as for an order that does not exist.
+    fails with "Order not found.", exactly as for an order that does not exist (staff may watch any, spec 015).
 defaultContentType: application/json
 servers:
   local:
@@ -47,7 +47,7 @@ components:
     WatchOrder:
       name: WatchOrder
       title: Watch an order
-      summary: The single argument is the order ID. Only the order's own customer may watch it.
+      summary: The single argument is the order ID. Only the order's own customer, or staff (spec 015), may watch it.
       payload:
         type: string
         format: uuid

@@ -20,6 +20,9 @@ public static class AuthenticationExtensions
 {
     public const string Audience = "orderflow-api";
 
+    /// <summary>The Keycloak realm role for staff (spec 015), in the tokens' flat "roles" claim.</summary>
+    public const string StaffRole = "staff";
+
     public static IHostApplicationBuilder AddOrderFlowAuthentication(this IHostApplicationBuilder builder)
     {
         var auth = builder.Configuration.GetSection("Auth");
@@ -40,6 +43,7 @@ public static class AuthenticationExtensions
                 // Keep claim names as Keycloak writes them: the customer is "sub" (R-1).
                 options.MapInboundClaims = false;
                 options.TokenValidationParameters.NameClaimType = "preferred_username";
+                options.TokenValidationParameters.RoleClaimType = "roles"; // spec 015, Q2
                 if (auth["Issuer"] is { Length: > 0 } issuer)
                 {
                     options.TokenValidationParameters.ValidIssuer = issuer;
@@ -64,6 +68,9 @@ public static class AuthenticationExtensions
         builder.Services.AddAuthorization();
         return builder;
     }
+
+    /// <summary>A member of staff: the login carries the realm role <see cref="StaffRole"/> (spec 015). Exact match.</summary>
+    public static bool IsStaff(this ClaimsPrincipal user) => user.IsInRole(StaffRole);
 
     /// <summary>The logged-in customer: the token's subject (spec 012, R-1).</summary>
     public static string CustomerId(this ClaimsPrincipal user) =>

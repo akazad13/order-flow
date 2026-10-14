@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { cancelOrder, getInbox, getOrder, placeOrder, type InboxMessage, type Order } from './api/clients';
 import { watchOrder } from './api/live';
-import { currentCustomer, logIn, logOut, type Customer } from './auth';
+import { currentCustomer, logIn, logOut, onLoginChanged, type Customer } from './auth';
+import { StaffLookup } from './StaffLookup';
 
 // The inbox is still polled; order status is pushed (spec 005).
 export const POLL_MS = 1000;
@@ -16,7 +17,7 @@ function newer(current: Order | null, next: Order): Order {
 const CANCELLATION_TEXT: Record<NonNullable<Order['cancellation']>['reason'], string> = {
   OutOfStock: 'some items are out of stock',
   PaymentDeclined: 'your payment was declined',
-  CustomerRequested: 'you cancelled it',
+  CustomerRequested: 'cancelled at your request', // by you, or by our support team for you (spec 015)
 };
 
 type CancelState = 'idle' | 'cancelling' | 'too-late';
@@ -38,8 +39,11 @@ export function App() {
     currentCustomer()
       .then((found) => active && setCustomer(found))
       .catch(() => active && setCustomer(null));
+    // Spec 015: a renewed login, or one that ended (the page then asks to log in again).
+    const unsubscribe = onLoginChanged((changed) => active && setCustomer(changed));
     return () => {
       active = false;
+      unsubscribe();
     };
   }, []);
 
@@ -125,6 +129,8 @@ export function App() {
           Logged in as {customer.name} <button type="button" onClick={() => void logOut()}>Log out</button>
         </p>
       )}
+
+      {customer?.isStaff && <StaffLookup />}
 
       {customer && (
       <form onSubmit={handleSubmit}>
