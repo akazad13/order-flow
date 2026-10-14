@@ -10,6 +10,16 @@ export type InboxMessage = NotificationComponents['schemas']['InboxMessage'];
 export type PlaceOrderResult = { ok: true; order: Order } | { ok: false; problem: ValidationProblem };
 
 /**
+ * Spec 006: accepted (the outcome is pushed, spec 005), already cancelled (nothing changed),
+ * too late (the order is confirmed), or no such order.
+ */
+export type CancelOrderResult =
+  | { outcome: 'accepted' }
+  | { outcome: 'already-cancelled'; order: Order }
+  | { outcome: 'too-late' }
+  | { outcome: 'not-found' };
+
+/**
  * The UI's Order API client. A factory so the Pact consumer test (spec 008) can point the
  * exact code the app uses at Pact's mock server.
  */
@@ -27,6 +37,22 @@ export function createOrderApi(baseUrl: string) {
       return { ok: false, problem: error as ValidationProblem };
     },
 
+    async cancelOrder(orderId: string): Promise<CancelOrderResult> {
+      const { data, response } = await client.POST('/orders/{orderId}/cancellation', {
+        params: { path: { orderId } },
+      });
+      switch (response.status) {
+        case 202:
+          return { outcome: 'accepted' };
+        case 200:
+          return { outcome: 'already-cancelled', order: data! };
+        case 409:
+          return { outcome: 'too-late' };
+        default:
+          return { outcome: 'not-found' };
+      }
+    },
+
     async getOrder(orderId: string): Promise<Order | null> {
       const { data } = await client.GET('/orders/{orderId}', {
         params: { path: { orderId } },
@@ -41,6 +67,10 @@ const notificationApi = createClient<NotificationPaths>({ baseUrl: '/notificatio
 
 export function placeOrder(customerId: string, sku: string, quantity: number): Promise<PlaceOrderResult> {
   return orderApi.placeOrder(customerId, sku, quantity);
+}
+
+export function cancelOrder(orderId: string): Promise<CancelOrderResult> {
+  return orderApi.cancelOrder(orderId);
 }
 
 export function getOrder(orderId: string): Promise<Order | null> {

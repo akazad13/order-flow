@@ -150,4 +150,31 @@ describe('Order API, as the web UI uses it', () => {
 
         expect(order).toBeNull();
       }));
+
+  // Spec 006. The UI only reads the status code; the outcome is pushed (spec 005).
+  it('asks to cancel a pending order', () =>
+    provider
+      .addInteraction()
+      .given('a pending order exists')
+      .uponReceiving('a request to cancel a pending order')
+      .withRequest('POST', fromProviderState('/orders/${orderId}/cancellation', `/orders/${EXAMPLE_ID}/cancellation`))
+      .willRespondWith(202)
+      .executeTest(async (mockServer) => {
+        const result = await createOrderApi(mockServer.url).cancelOrder(EXAMPLE_ID);
+
+        expect(result.outcome).toBe('accepted');
+      }));
+
+  it('is refused when cancelling a confirmed order', () =>
+    provider
+      .addInteraction()
+      .given('a confirmed order exists', { total: 37.0 })
+      .uponReceiving('a request to cancel a confirmed order')
+      .withRequest('POST', fromProviderState('/orders/${orderId}/cancellation', `/orders/${EXAMPLE_ID}/cancellation`))
+      .willRespondWith(409)
+      .executeTest(async (mockServer) => {
+        const result = await createOrderApi(mockServer.url).cancelOrder(EXAMPLE_ID);
+
+        expect(result.outcome).toBe('too-late');
+      }));
 });

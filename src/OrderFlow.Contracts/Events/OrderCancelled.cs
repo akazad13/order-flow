@@ -3,7 +3,7 @@ using MassTransit;
 namespace OrderFlow.Contracts.Events;
 
 /// <summary>
-/// Published by the Order service when an order is cancelled. Final (specs 002, 003).
+/// Published by the Order service when an order is cancelled. Final (specs 002, 003, 006).
 /// Contract: contracts/events/asyncapi.yaml (channel "order-cancelled"),
 /// schema: contracts/events/schemas/order-cancelled.v1.json.
 /// </summary>
@@ -21,4 +21,5 @@ public static class CancellationReasons
 {
     public const string OutOfStock = "OutOfStock";
     public const string PaymentDeclined = "PaymentDeclined";
+    public const string CustomerRequested = "CustomerRequested";
 }

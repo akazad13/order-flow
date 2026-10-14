@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: OrderFlow Order API
-  version: 0.3.0
-  description: Customer-facing API for placing and reading orders. Specs 000 to 003.
+  version: 0.4.0
+  description: Customer-facing API for placing, reading and cancelling orders. Specs 000 to 003 and 006. Status changes are pushed by the hub in contracts/realtime (spec 005).
   contact:
     name: OrderFlow
     url: https://example.com/orderflow
@@ -65,6 +65,43 @@ paths:
                 $ref: '#/components/schemas/Order'
         '404':
           description: No order with that ID.
+  /orders/{orderId}/cancellation:
+    post:
+      operationId: cancelOrder
+      tags: [orders]
+      summary: Ask to cancel an order
+      description: |
+        Spec 006. A Pending order: the request is recorded and the order service decides
+        (202); the outcome is pushed to watchers (spec 005). If the order is confirmed before
+        the request is handled, it stays Confirmed. Repeating the request is harmless.
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '202':
+          description: Request accepted; the order as it is now (still Pending).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '200':
+          description: The order was already cancelled; nothing changed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          description: No order with that ID.
+        '409':
+          description: The order is already confirmed and cannot be cancelled.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
 components:
   schemas:
     OrderLine:
@@ -129,10 +166,23 @@ components:
       properties:
         reason:
           type: string
-          enum: [OutOfStock, PaymentDeclined]
+          enum: [OutOfStock, PaymentDeclined, CustomerRequested]
         detail:
           type: string
           examples: [Only 1 of SKU-002 available, 2 requested.]
+    Problem:
+      type: object
+      required: [title, status]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+          examples: [The order is already confirmed.]
+        status:
+          type: integer
+        detail:
+          type: string
     ValidationProblem:
       type: object
       required: [title, status, errors]

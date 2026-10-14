@@ -133,6 +133,53 @@ describe('App', () => {
     expect(screen.queryByText('Pending')).not.toBeInTheDocument();
   });
 
+  it('cancels a pending order and shows the pushed cancellation (spec 006, AC-8)', async () => {
+    vi.mocked(clients.cancelOrder).mockResolvedValue({ outcome: 'accepted' });
+    const live = await placeAndWatch();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel order' }));
+
+    expect(clients.cancelOrder).toHaveBeenCalledWith(pending.orderId);
+    expect(await screen.findByText('Cancelling...')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancel order' })).not.toBeInTheDocument();
+
+    await live.push({ ...pending, status: 'Cancelled', cancellation: { reason: 'CustomerRequested', detail: "Cancelled at the customer's request." } });
+
+    const order = screen.getByRole('region', { name: 'Order' });
+    expect(within(order).getByText('Cancelled')).toBeInTheDocument();
+    expect(within(order).getByText('Reason: you cancelled it')).toBeInTheDocument();
+    expect(screen.queryByText('Cancelling...')).not.toBeInTheDocument();
+  });
+
+  it('tells the customer when it is too late to cancel (spec 006, AC-8)', async () => {
+    vi.mocked(clients.cancelOrder).mockResolvedValue({ outcome: 'too-late' });
+    await placeAndWatch();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel order' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Too late to cancel: your order is already confirmed.');
+  });
+
+  it('explains when an accepted cancellation lost the race to the payment (spec 006, AC-6, AC-8)', async () => {
+    vi.mocked(clients.cancelOrder).mockResolvedValue({ outcome: 'accepted' });
+    const live = await placeAndWatch();
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel order' }));
+
+    await live.push(confirmed);
+
+    expect(screen.getByText('Confirmed')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Too late to cancel: your order is already confirmed.');
+  });
+
+  it('offers no cancel once the order is final', async () => {
+    const live = await placeAndWatch();
+    expect(screen.getByRole('button', { name: 'Cancel order' })).toBeInTheDocument();
+
+    await live.push(confirmed);
+
+    expect(screen.queryByRole('button', { name: 'Cancel order' })).not.toBeInTheDocument();
+  });
+
   it('lists validation errors from the API', async () => {
     vi.mocked(clients.placeOrder).mockResolvedValue({
       ok: false,

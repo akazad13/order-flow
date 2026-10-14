@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orderflow.example.com/events/payment-refunded.v1.json",
+  "title": "PaymentRefunded v1",
+  "description": "The `message` body of the MassTransit envelope published on the payment-refunded exchange. A charge for a cancelled order was refunded in full, once (spec 006).",
+  "type": "object",
+  "required": ["orderId", "customerId", "paymentId", "amount", "refundedAt"],
+  "additionalProperties": false,
+  "properties": {
+    "orderId": { "type": "string", "format": "uuid" },
+    "customerId": { "type": "string", "minLength": 1 },
+    "paymentId": { "type": "string", "format": "uuid", "description": "The refunded charge (PaymentSucceeded.paymentId)." },
+    "amount": { "$ref": "#/$defs/money" },
+    "refundedAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "money": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)([.][0-9]{1,2})?$",
+      "description": "Decimal amount in the shop currency, as a string (MassTransit writes decimals as strings to avoid float rounding). Example: \"37.00\"."
+    }
+  }
+}

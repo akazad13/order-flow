@@ -89,6 +89,39 @@ public sealed class InventoryServiceTests(InfrastructureFixture infrastructure)
         (await Available(client, "ITEM-3")).ShouldBe(7);
     }
 
+    [Fact]
+    public async Task Orders_cancelled_while_being_placed_end_up_holding_nothing()
+    {
+        // Spec 006, AC-4: each order's cancellation and placement arrive at the same moment.
+        var settings = await SettingsAsync();
+        await using var testBus = await TestBus.StartAsync(infrastructure, settings["RabbitMq:VirtualHost"]!);
+        await using var host = new ServiceHost<Program>(settings);
+        var client = await host.StartAsync();
+        await SetStock(client, "ITEM-4", 10);
+
+        var ids = Enumerable.Range(0, 10).Select(_ => Guid.NewGuid()).ToList();
+        await Task.WhenAll(ids.SelectMany(id => new[]
+        {
+            testBus.Publish(new OrderCancelled(id, "customer-1", CancellationReasons.CustomerRequested, "Cancelled at the customer's request.", DateTimeOffset.UtcNow)),
+            testBus.Publish(new OrderPlaced(id, "customer-1", [new OrderPlacedLine("ITEM-4", 1)], DateTimeOffset.UtcNow)),
+        }));
+
+        await WaitUntilConsumed(host, messages: ids.Count * 2);
+
+        // Whichever came first, nothing stays held: a hold is always followed by its release.
+        (await Available(client, "ITEM-4")).ShouldBe(10);
+        foreach (var id in ids)
+        {
+            var reserved = testBus.Received<StockReserved>().Count(m => m.OrderId == id);
+            if (reserved == 1)
+            {
+                await testBus.WaitFor<StockReleased>(m => m.OrderId == id);
+            }
+
+            reserved.ShouldBeLessThanOrEqualTo(1);
+        }
+    }
+
     /// <summary>Polls the outbox's inbox table until the service has finished this many messages.</summary>
     private static async Task WaitUntilConsumed(ServiceHost<Program> host, int messages)
     {

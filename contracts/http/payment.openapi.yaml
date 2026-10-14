@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: OrderFlow Payment API (test controls)
   version: 0.1.0
-  description: Payment has no customer-facing API. This contract only covers the test switch that makes the fake gateway decline a customer's payments (spec 003).
+  description: Payment has no customer-facing API. This contract only covers the test switches of the fake gateway (specs 003 and 006).
   contact:
     name: OrderFlow
     url: https://example.com/orderflow
@@ -36,6 +36,21 @@ paths:
           description: Rule stored.
         '400':
           description: Missing reason.
+  /test/stalls/{customerId}:
+    parameters:
+      - name: customerId
+        in: path
+        required: true
+        schema:
+          type: string
+    put:
+      operationId: setStall
+      tags: [test]
+      summary: Leave this customer's payments undecided (test only)
+      description: Spec 006, Q4. Payments for the customer are neither charged nor declined, so their orders stay Pending until cancelled. Lasts until the service restarts.
+      responses:
+        '204':
+          description: Switch stored.
 components:
   schemas:
     DeclineRule:

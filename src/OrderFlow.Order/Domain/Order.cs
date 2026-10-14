@@ -119,7 +119,7 @@ public sealed class Order
 
     /// <summary>
     /// Cancelled is final (spec 002, R-3); cancelling again is harmless. A confirmed order is
-    /// never cancelled by the stock or payment flows (spec 003, R-3).
+    /// never cancelled, by the stock or payment flows (spec 003, R-3) or by the customer (spec 006, AC-2).
     /// </summary>
     public void Cancel(string reason, string detail)
     {

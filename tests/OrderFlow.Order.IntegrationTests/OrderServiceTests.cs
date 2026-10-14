@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using MassTransit.EntityFrameworkCoreIntegration;
 using OrderFlow.Contracts.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,6 +8,7 @@ using OrderFlow.IntegrationTesting;
 using OrderFlow.OrderService.Api;
 using OrderFlow.OrderService.Persistence;
 using OrderFlow.OrderService.StateMachine;
+using Xunit.Abstractions;
 
 namespace OrderFlow.Order.IntegrationTests;
 
@@ -16,7 +18,7 @@ namespace OrderFlow.Order.IntegrationTests;
 /// </summary>
 [Collection(IntegrationCollection.Name)]
 [Trait("Category", "Integration")]
-public sealed class OrderServiceTests(InfrastructureFixture infrastructure)
+public sealed class OrderServiceTests(InfrastructureFixture infrastructure, ITestOutputHelper output)
 {
     [Fact]
     public async Task Order_and_its_progress_survive_a_restart()
@@ -93,6 +95,76 @@ public sealed class OrderServiceTests(InfrastructureFixture infrastructure)
         foreach (var id in ids)
         {
             (await client.GetFromJsonAsync<OrderResponse>($"/orders/{id}"))!.Status.ShouldBe("Confirmed");
+        }
+    }
+
+    [Fact]
+    public async Task Cancellation_and_payment_racing_end_one_way()
+    {
+        // Spec 006, AC-6: for each order, the customer cancels at the moment the payment succeeds.
+        var settings = await SettingsAsync();
+        await using var testBus = await TestBus.StartAsync(infrastructure, settings["RabbitMq:VirtualHost"]!);
+        testBus.React<OrderPlaced>((m, bus) => bus.Publish(new StockReserved(m.OrderId, m.CustomerId, [], 10.00m, DateTimeOffset.UtcNow)));
+
+        await using var host = new ServiceHost<Program>(settings);
+        var client = await host.StartAsync();
+
+        var placed = await Task.WhenAll(Enumerable.Range(0, 20).Select(_ => PlaceOrder(client, "SKU-003", 1)));
+        var ids = placed.Select(o => o.OrderId).ToHashSet();
+        await WaitUntil(host, db => db.Set<OrderState>().CountAsync(s => ids.Contains(s.CorrelationId) && s.CurrentState == "AwaitingPayment"), ids.Count, "every order awaiting payment");
+
+        // Half the payments are sent with the request; the request travels through the database
+        // and the outbox, so the payment usually wins. The other half are sent once the request is
+        // on the broker, so the request usually wins. Either way, each order must end one way.
+        var answers = await Task.WhenAll(ids.Select(async (id, i) =>
+        {
+            var cancel = client.PostAsync($"/orders/{id}/cancellation", null);
+            if (i % 2 == 1)
+            {
+                await testBus.WaitFor<OrderCancellationRequested>(m => m.OrderId == id);
+            }
+
+            await testBus.Publish(new PaymentSucceeded(id, Guid.NewGuid(), 10.00m, DateTimeOffset.UtcNow));
+            return (await cancel).StatusCode;
+        }));
+        answers.ShouldAllBe(code => code == HttpStatusCode.Accepted || code == HttpStatusCode.Conflict);
+
+        // Settled: every order final and nothing left to send, so no further event can appear.
+        await WaitUntil(host, db => db.Set<OrderState>().CountAsync(s => ids.Contains(s.CorrelationId) && (s.CurrentState == "Confirmed" || s.CurrentState == "Cancelled")), ids.Count, "every order final");
+        await WaitUntil(host, async db => await db.Set<OutboxMessage>().AnyAsync() ? 0 : 1, 1, "the outbox drained");
+        await testBus.WaitForCount<object>(m => (m is OrderConfirmed c && ids.Contains(c.OrderId)) || (m is OrderCancelled x && ids.Contains(x.OrderId)), ids.Count);
+
+        foreach (var id in ids)
+        {
+            var confirmed = testBus.Received<OrderConfirmed>().Count(m => m.OrderId == id);
+            var cancelled = testBus.Received<OrderCancelled>().Count(m => m.OrderId == id);
+            (confirmed + cancelled).ShouldBe(1, $"order {id}: {confirmed} confirmed, {cancelled} cancelled");
+
+            var order = await client.GetFromJsonAsync<OrderResponse>($"/orders/{id}");
+            order!.Status.ShouldBe(confirmed == 1 ? "Confirmed" : "Cancelled");
+        }
+
+        output.WriteLine($"Confirmed first: {testBus.Received<OrderConfirmed>().Count(m => ids.Contains(m.OrderId))}; cancelled first: {testBus.Received<OrderCancelled>().Count(m => ids.Contains(m.OrderId))}.");
+    }
+
+    /// <summary>Polls a count in the service's database until it reaches the target.</summary>
+    private static async Task WaitUntil(ServiceHost<Program> host, Func<OrderDbContext, Task<int>> count, int target, string what)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(60);
+        while (true)
+        {
+            await using var scope = host.Services.CreateAsyncScope();
+            if (await count(scope.ServiceProvider.GetRequiredService<OrderDbContext>()) >= target)
+            {
+                return;
+            }
+
+            if (DateTime.UtcNow > deadline)
+            {
+                throw new TimeoutException($"Timed out waiting for {what}.");
+            }
+
+            await Task.Delay(50);
         }
     }
 

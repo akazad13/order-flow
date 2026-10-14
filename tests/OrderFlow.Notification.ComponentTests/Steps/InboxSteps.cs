@@ -51,6 +51,16 @@ public sealed class InboxSteps(NotificationServiceFactory service)
         await Eventually.True(() => consumer.Consumed.Select<OrderCancelled>(m => m.Context.Message.OrderId == _orderId).Any(), "OrderCancelled (Consumed)");
     }
 
+    [When(@"^a PaymentRefunded event of (\d+\.\d{2}) arrives for customer ""([^""]+)""$")]
+    public async Task WhenAPaymentRefundedEventArrives(string amount, string customerId)
+    {
+        _ = service.CreateClient();
+        await service.Harness.Bus.Publish(new PaymentRefunded(_orderId, customerId, Guid.NewGuid(), decimal.Parse(amount, System.Globalization.CultureInfo.InvariantCulture), DateTimeOffset.UtcNow));
+
+        // Any consumer: the scenario fails on the inbox if nothing handles it.
+        await Eventually.True(() => service.Harness.Consumed.Select<PaymentRefunded>(m => m.Context.Message.OrderId == _orderId).Any(), "PaymentRefunded (Consumed)");
+    }
+
     [When("an OrderConfirmed event for customer {string} arrives twice")]
     public async Task WhenAnOrderConfirmedEventArrivesTwice(string customerId)
     {

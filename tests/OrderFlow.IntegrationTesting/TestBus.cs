@@ -38,6 +38,8 @@ public sealed class TestBus : IAsyncDisposable
                 Observe<PaymentFailed>(e);
                 Observe<OrderConfirmed>(e);
                 Observe<OrderCancelled>(e);
+                Observe<OrderCancellationRequested>(e);
+                Observe<PaymentRefunded>(e);
             });
         });
     }

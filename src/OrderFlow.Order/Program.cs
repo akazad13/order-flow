@@ -53,6 +53,7 @@ builder.Services.AddScoped<RecordStockHeldActivity>();
 builder.Services.AddScoped<ConfirmOrderActivity>();
 builder.Services.AddScoped<CancelForShortageActivity>();
 builder.Services.AddScoped<CancelForPaymentActivity>();
+builder.Services.AddScoped<CancelAtCustomerRequestActivity>();
 
 var app = builder.Build();
 

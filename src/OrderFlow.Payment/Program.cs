@@ -4,7 +4,11 @@ using OrderFlow.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddOrderFlowServiceDefaults("payment", bus => bus.AddConsumer<StockReservedConsumer>());
+builder.AddOrderFlowServiceDefaults("payment", bus =>
+{
+    bus.AddConsumer<StockReservedConsumer>();
+    bus.AddConsumer<OrderCancelledConsumer>();
+});
 builder.Services.AddSingleton<FakePaymentGateway>();
 builder.Services.AddSingleton<IPaymentGateway>(sp => sp.GetRequiredService<FakePaymentGateway>());
 
@@ -12,7 +16,7 @@ var app = builder.Build();
 
 app.MapOrderFlowDefaults();
 
-// Test-only (contracts/http/payment.openapi.yaml): make a customer's payments fail (spec 003, Q1).
+// Test-only (contracts/http/payment.openapi.yaml): make a customer's payments fail (spec 003, Q1) or stall (spec 006, Q4).
 if (app.Configuration.GetValue<bool>(TestEndpoints.EnableKey))
 {
     app.MapPut("/test/declines/{customerId}", (string customerId, DeclineRule rule, FakePaymentGateway gateway) =>
@@ -25,6 +29,13 @@ if (app.Configuration.GetValue<bool>(TestEndpoints.EnableKey))
         gateway.DeclineFor(customerId, rule.Reason);
         return Results.NoContent();
     }).WithName("setDecline");
+
+    // Spec 006, Q4: leave a customer's payments undecided, so their orders stay Pending.
+    app.MapPut("/test/stalls/{customerId}", (string customerId, FakePaymentGateway gateway) =>
+    {
+        gateway.StallFor(customerId);
+        return Results.NoContent();
+    }).WithName("setStall");
 }
 
 app.Run();

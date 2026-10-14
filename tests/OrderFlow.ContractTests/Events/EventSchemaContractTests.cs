@@ -41,7 +41,13 @@ public class EventSchemaContractTests
             "order-cancelled.v1.json",
             new OrderCancelled(Guid.NewGuid(), "customer-1", CancellationReasons.PaymentDeclined, "Card declined", DateTimeOffset.UtcNow)
         },
+        {
+            "order-cancelled.v1.json",
+            new OrderCancelled(Guid.NewGuid(), "customer-1", CancellationReasons.CustomerRequested, "Cancelled at the customer's request.", DateTimeOffset.UtcNow)
+        },
         { "stock-released.v1.json", new StockReleased(Guid.NewGuid(), [new StockReleasedLine("SKU-001", 3)], DateTimeOffset.UtcNow) },
+        { "order-cancellation-requested.v1.json", new OrderCancellationRequested(Guid.NewGuid(), DateTimeOffset.UtcNow) },
+        { "payment-refunded.v1.json", new PaymentRefunded(Guid.NewGuid(), "customer-1", Guid.NewGuid(), 37.00m, DateTimeOffset.UtcNow) },
     };
 
     [Theory]

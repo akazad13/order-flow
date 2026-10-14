@@ -66,7 +66,15 @@ public sealed class EfCatalogStore(InventoryDbContext db) : ICatalogStore
     public async Task<IReadOnlyList<ReservedLine>> ReleaseAsync(Guid orderId, CancellationToken cancellationToken)
     {
         var reservation = await db.Reservations.FindAsync([orderId], cancellationToken);
-        if (reservation is not { Status: StockDecision.Held })
+        if (reservation is null)
+        {
+            // Cancelled before it was placed (spec 006): remember it, so its placement is never
+            // held. Racing that placement, one insert fails on the primary key and is retried.
+            db.Reservations.Add(new ReservationRow { OrderId = orderId, Status = StockDecision.Released, Lines = [] });
+            return [];
+        }
+
+        if (reservation.Status != StockDecision.Held)
         {
             return [];
         }

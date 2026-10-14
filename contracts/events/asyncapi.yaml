@@ -1,7 +1,7 @@
 asyncapi: 3.1.0
 info:
   title: OrderFlow events
-  version: 0.3.0
+  version: 0.4.0
   description: |
     Events exchanged between OrderFlow services over RabbitMQ (MassTransit v8).
     MassTransit wraps each payload in an envelope; the schemas below describe the
@@ -70,6 +70,22 @@ channels:
     messages:
       OrderCancelled:
         $ref: '#/components/messages/OrderCancelled'
+    bindings:
+      $ref: '#/components/channelBindings/fanout'
+  orderCancellationRequested:
+    address: order-cancellation-requested
+    description: The customer asked to cancel a Pending order (spec 006). Only the Order service listens.
+    messages:
+      OrderCancellationRequested:
+        $ref: '#/components/messages/OrderCancellationRequested'
+    bindings:
+      $ref: '#/components/channelBindings/fanout'
+  paymentRefunded:
+    address: payment-refunded
+    description: A charge for a cancelled order was refunded (spec 006).
+    messages:
+      PaymentRefunded:
+        $ref: '#/components/messages/PaymentRefunded'
     bindings:
       $ref: '#/components/channelBindings/fanout'
   stockReleased:
@@ -207,6 +223,41 @@ operations:
       $ref: '#/channels/orderCancelled'
     messages:
       - $ref: '#/channels/orderCancelled/messages/OrderCancelled'
+  paymentReceivesOrderCancelled:
+    action: receive
+    summary: Payment refunds a charge for the order once, or voids a payment not yet decided (spec 006).
+    channel:
+      $ref: '#/channels/orderCancelled'
+    messages:
+      - $ref: '#/channels/orderCancelled/messages/OrderCancelled'
+  publishOrderCancellationRequested:
+    action: send
+    summary: The Order API records a customer's request to cancel.
+    channel:
+      $ref: '#/channels/orderCancellationRequested'
+    messages:
+      - $ref: '#/channels/orderCancellationRequested/messages/OrderCancellationRequested'
+  orderReceivesOrderCancellationRequested:
+    action: receive
+    summary: The state machine cancels a Pending order, or ignores the request if the order is already final.
+    channel:
+      $ref: '#/channels/orderCancellationRequested'
+    messages:
+      - $ref: '#/channels/orderCancellationRequested/messages/OrderCancellationRequested'
+  publishPaymentRefunded:
+    action: send
+    summary: Payment announces a refund, at most once per order.
+    channel:
+      $ref: '#/channels/paymentRefunded'
+    messages:
+      - $ref: '#/channels/paymentRefunded/messages/PaymentRefunded'
+  notificationReceivesPaymentRefunded:
+    action: receive
+    summary: Notification tells the customer their payment was refunded.
+    channel:
+      $ref: '#/channels/paymentRefunded'
+    messages:
+      - $ref: '#/channels/paymentRefunded/messages/PaymentRefunded'
   publishStockReleased:
     action: send
     summary: Inventory announces released stock, at most once per order.
@@ -260,6 +311,18 @@ components:
       summary: The payment was declined; no charge was made.
       payload:
         $ref: './schemas/payment-failed.v1.json'
+    OrderCancellationRequested:
+      name: OrderCancellationRequested
+      title: Order cancellation requested (v1)
+      summary: The customer asked to cancel a Pending order.
+      payload:
+        $ref: './schemas/order-cancellation-requested.v1.json'
+    PaymentRefunded:
+      name: PaymentRefunded
+      title: Payment refunded (v1)
+      summary: A charge for a cancelled order was refunded in full.
+      payload:
+        $ref: './schemas/payment-refunded.v1.json'
     OrderCancelled:
       name: OrderCancelled
       title: Order cancelled (v1)

@@ -71,7 +71,7 @@ services:
       args: { PROJECT: OrderFlow.Payment }
     environment:
       RabbitMq__Host: rabbitmq
-      Payment__EnableTestEndpoints: "true" # PUT /test/declines/{customerId} (spec 003, Q1)
+      Payment__EnableTestEndpoints: "true" # PUT /test/declines/{customerId} (spec 003, Q1), PUT /test/stalls/{customerId} (spec 006, Q4)
     ports: ["5103:8080"]
 
   notification:

@@ -207,6 +207,8 @@ public sealed class OrderLifecycleSteps(OrderServiceFactory service)
     [Then("the order is cancelled with reason {string} and detail {string}")]
     public async Task ThenTheOrderIsCancelled(string reason, string detail)
     {
+        // A customer's request is handled asynchronously (spec 006); wait for the outcome.
+        await Saga.Exists(_placed!.OrderId, machine => machine.Cancelled);
         var order = await service.CreateClient().GetFromJsonAsync<OrderResponse>($"/orders/{_placed!.OrderId}");
 
         order!.Status.ShouldBe("Cancelled");

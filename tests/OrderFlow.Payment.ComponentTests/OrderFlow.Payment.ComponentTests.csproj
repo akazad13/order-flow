@@ -19,6 +19,7 @@
     <ReqnrollFeatureFiles Include="..\..\features\component\take-payment.feature" Link="Features\take-payment.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\decline-payment.feature" Link="Features\decline-payment.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\duplicate-payment.feature" Link="Features\duplicate-payment.feature" />
+    <ReqnrollFeatureFiles Include="..\..\features\component\settle-payment.feature" Link="Features\settle-payment.feature" />
   </ItemGroup>
 
   <ItemGroup>

@@ -105,12 +105,20 @@ public sealed class Catalog
     /// <summary>
     /// Returns the quantities held for the order to available stock. Returns the released
     /// lines the first time, and nothing if the order held nothing or was already released.
+    /// An order with no decision yet (its cancellation overtook its placement, spec 006) is
+    /// recorded as Released, so its placement is never held.
     /// </summary>
     public IReadOnlyList<ReservedLine> Release(Guid orderId)
     {
         lock (_lock)
         {
-            if (_decisions.GetValueOrDefault(orderId) != StockDecision.Held || !_reservations.Remove(orderId, out var held))
+            if (!_decisions.TryGetValue(orderId, out var decision))
+            {
+                _decisions[orderId] = StockDecision.Released;
+                return [];
+            }
+
+            if (decision != StockDecision.Held || !_reservations.Remove(orderId, out var held))
             {
                 return [];
             }

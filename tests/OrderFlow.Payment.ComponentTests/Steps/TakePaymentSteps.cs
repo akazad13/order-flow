@@ -16,6 +16,9 @@ public sealed class TakePaymentSteps(PaymentServiceFactory service)
 {
     private readonly Guid _orderId = Guid.NewGuid();
 
+    /// <summary>The scenario's order ("that order"); shared with <see cref="SettlePaymentSteps"/>.</summary>
+    internal Guid OrderId => _orderId;
+
     [Given("payments for customer {string} are declined with {string}")]
     public async Task GivenPaymentsAreDeclined(string customerId, string reason)
     {

@@ -11,6 +11,7 @@ public static class OrderEndpoints
     {
         app.MapPost("/orders", PlaceOrder).WithName("placeOrder");
         app.MapGet("/orders/{orderId:guid}", GetOrder).WithName("getOrder");
+        app.MapPost("/orders/{orderId:guid}/cancellation", CancelOrder).WithName("cancelOrder");
         return app;
     }
 
@@ -43,6 +44,40 @@ public static class OrderEndpoints
         await orders.SaveChangesAsync(cancellationToken);
 
         return Results.Created($"/orders/{order.Id}", OrderResponse.From(order));
+    }
+
+    /// <summary>
+    /// Spec 006. Records the customer's request; the state machine decides (R-1), so a Pending
+    /// order gets 202 and the outcome is pushed to watchers (spec 005).
+    /// </summary>
+    private static async Task<IResult> CancelOrder(
+        Guid orderId,
+        IOrderRepository orders,
+        IPublishEndpoint publisher,
+        TimeProvider clock,
+        CancellationToken cancellationToken)
+    {
+        var order = await orders.GetAsync(orderId, cancellationToken);
+        switch (order?.Status)
+        {
+            case null:
+                return Results.NotFound();
+
+            case OrderStatus.Confirmed:
+                return Results.Problem(
+                    title: "The order is already confirmed.",
+                    detail: "A confirmed order cannot be cancelled.",
+                    statusCode: StatusCodes.Status409Conflict);
+
+            case OrderStatus.Cancelled:
+                return Results.Ok(OrderResponse.From(order));
+
+            default:
+                // Postgres: the bus outbox stores the request; SaveChanges commits and delivers it.
+                await publisher.Publish(new OrderCancellationRequested(order.Id, clock.GetUtcNow()), cancellationToken);
+                await orders.SaveChangesAsync(cancellationToken);
+                return Results.Accepted($"/orders/{order.Id}", OrderResponse.From(order));
+        }
     }
 
     private static async Task<IResult> GetOrder(Guid orderId, IOrderRepository orders, CancellationToken cancellationToken)

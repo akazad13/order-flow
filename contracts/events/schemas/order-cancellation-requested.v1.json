@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orderflow.example.com/events/order-cancellation-requested.v1.json",
+  "title": "OrderCancellationRequested v1",
+  "description": "The `message` body of the MassTransit envelope published on the order-cancellation-requested exchange. The customer asked to cancel a Pending order; the Order service's state machine decides (spec 006).",
+  "type": "object",
+  "required": ["orderId", "requestedAt"],
+  "additionalProperties": false,
+  "properties": {
+    "orderId": { "type": "string", "format": "uuid" },
+    "requestedAt": { "type": "string", "format": "date-time" }
+  }
+}

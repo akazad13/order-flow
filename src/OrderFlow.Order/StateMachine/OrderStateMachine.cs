@@ -17,6 +17,8 @@ public sealed class OrderState : SagaStateMachineInstance
 ///   OrderPlaced -> AwaitingStock -> StockReserved -> AwaitingPayment -> PaymentSucceeded -> Confirmed
 ///                       |                                  |
 ///                       +-> StockRejected -> Cancelled     +-> PaymentFailed -> Cancelled
+///                       |                                  |
+///                       +-> CancellationRequested -> Cancelled (customer, spec 006, from either state)
 /// </summary>
 public sealed class OrderStateMachine : MassTransitStateMachine<OrderState>
 {
@@ -35,6 +37,13 @@ public sealed class OrderStateMachine : MassTransitStateMachine<OrderState>
             e.OnMissingInstance(m => m.Fault());
         });
         Event(() => StockRejected, e => e.CorrelateById(m => m.Message.OrderId));
+        // The API only accepts a request for an order it has stored, but the state machine may not
+        // be tracking it yet (its OrderPlaced is still in flight): fault, and let the retry wait.
+        Event(() => CancellationRequested, e =>
+        {
+            e.CorrelateById(m => m.Message.OrderId);
+            e.OnMissingInstance(m => m.Fault());
+        });
         Event(() => PaymentFailed, e =>
         {
             e.CorrelateById(m => m.Message.OrderId);
@@ -62,6 +71,9 @@ public sealed class OrderStateMachine : MassTransitStateMachine<OrderState>
                 .TransitionTo(AwaitingPayment),
             When(StockRejected)
                 .Activity(x => x.OfType<CancelForShortageActivity>())
+                .TransitionTo(Cancelled),
+            When(CancellationRequested)
+                .Activity(x => x.OfType<CancelAtCustomerRequestActivity>())
                 .TransitionTo(Cancelled));
 
         During(AwaitingPayment,
@@ -72,20 +84,28 @@ public sealed class OrderStateMachine : MassTransitStateMachine<OrderState>
                 .TransitionTo(Confirmed),
             When(PaymentFailed)
                 .Activity(x => x.OfType<CancelForPaymentActivity>())
+                .TransitionTo(Cancelled),
+            // Spec 006, AC-6: whichever of this and PaymentSucceeded is handled first wins; the
+            // other is ignored by the final state. Payment refunds a charge it already took.
+            When(CancellationRequested)
+                .Activity(x => x.OfType<CancelAtCustomerRequestActivity>())
                 .TransitionTo(Cancelled));
 
         // Status only moves forward (spec 001, R-4); final states ignore every earlier event.
+        // Too late to cancel (spec 006, AC-2): the customer sees Confirmed.
         During(Confirmed,
             Ignore(OrderPlaced),
             Ignore(StockReserved),
-            Ignore(PaymentSucceeded));
+            Ignore(PaymentSucceeded),
+            Ignore(CancellationRequested));
 
         During(Cancelled,
             Ignore(OrderPlaced),
             Ignore(StockReserved),
             Ignore(StockRejected),
             Ignore(PaymentSucceeded),
-            Ignore(PaymentFailed));
+            Ignore(PaymentFailed),
+            Ignore(CancellationRequested));
     }
 
     public State AwaitingStock { get; private set; } = null!;
@@ -98,4 +118,5 @@ public sealed class OrderStateMachine : MassTransitStateMachine<OrderState>
     public Event<PaymentSucceeded> PaymentSucceeded { get; private set; } = null!;
     public Event<StockRejected> StockRejected { get; private set; } = null!;
     public Event<PaymentFailed> PaymentFailed { get; private set; } = null!;
+    public Event<OrderCancellationRequested> CancellationRequested { get; private set; } = null!;
 }

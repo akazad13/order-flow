@@ -1,4 +1,4 @@
-# Spec: specs/003-payment-failure/spec.md (AC-3, R-1, R-2)
+# Spec: specs/003-payment-failure/spec.md (AC-3, R-1, R-2), specs/006-customer-cancel/spec.md (AC-4)
 # Runs in: tests/OrderFlow.Inventory.ComponentTests (Inventory service + in-memory bus)
 @component @spec-003
 Feature: Release stock for a cancelled order (Inventory service)
@@ -28,6 +28,16 @@ Feature: Release stock for a cancelled order (Inventory service)
   Scenario: An order that held nothing releases nothing
     When an order that held nothing is cancelled
     Then no StockReleased is published
+    And the available stock is:
+      | sku    | available |
+      | TEST-A | 10        |
+
+  @spec-006
+  Scenario: An order cancelled before its placement arrives is never held
+    When an order that held nothing is cancelled
+    And an order for 3 of "TEST-A" is placed
+    Then no StockReserved is published
+    And no StockReleased is published
     And the available stock is:
       | sku    | available |
       | TEST-A | 10        |

@@ -9,6 +9,7 @@ builder.AddOrderFlowServiceDefaults("notification", bus =>
     bus.AddConsumer<OrderPlacedConsumer>();
     bus.AddConsumer<OrderConfirmedConsumer>();
     bus.AddConsumer<OrderCancelledConsumer>();
+    bus.AddConsumer<PaymentRefundedConsumer>();
 });
 builder.Services.AddSingleton<IFakeInbox, InMemoryFakeInbox>();
 

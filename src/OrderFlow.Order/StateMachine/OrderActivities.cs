@@ -80,6 +80,25 @@ public sealed class CancelForPaymentActivity(IOrderRepository orders, TimeProvid
     public void Accept(StateMachineVisitor visitor) => visitor.Visit(this);
 }
 
+/// <summary>The customer asked to cancel a Pending order: cancel it as CustomerRequested (spec 006).</summary>
+public sealed class CancelAtCustomerRequestActivity(IOrderRepository orders, TimeProvider clock) : IStateMachineActivity<OrderState, OrderCancellationRequested>
+{
+    public const string Detail = "Cancelled at the customer's request.";
+
+    public async Task Execute(BehaviorContext<OrderState, OrderCancellationRequested> context, IBehavior<OrderState, OrderCancellationRequested> next)
+    {
+        await OrderCancellation.Cancel(context, orders, clock, context.Message.OrderId, CancellationReasons.CustomerRequested, Detail);
+        await next.Execute(context);
+    }
+
+    public Task Faulted<TException>(BehaviorExceptionContext<OrderState, OrderCancellationRequested, TException> context, IBehavior<OrderState, OrderCancellationRequested> next)
+        where TException : Exception => next.Faulted(context);
+
+    public void Probe(ProbeContext context) => context.CreateScope("cancel-at-customer-request");
+
+    public void Accept(StateMachineVisitor visitor) => visitor.Visit(this);
+}
+
 internal static class OrderCancellation
 {
     public static async Task Cancel(ConsumeContext context, IOrderRepository orders, TimeProvider clock, Guid orderId, string reason, string detail)

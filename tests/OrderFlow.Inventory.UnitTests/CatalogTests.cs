@@ -169,4 +169,17 @@ public class CatalogTests
 
         catalog.Get("TEST-A")!.Available.ShouldBe(10);
     }
+
+    [Fact]
+    public void An_order_cancelled_before_it_was_placed_is_never_held()
+    {
+        // Spec 006, AC-4: the customer's cancellation can reach Inventory before the placement.
+        var catalog = NewCatalog();
+        var orderId = Guid.NewGuid();
+        catalog.Release(orderId).ShouldBeEmpty();
+
+        catalog.TryReserve(orderId, [new RequestedLine("TEST-A", 3)]).ShouldBeOfType<ReservationResult.AlreadyDecided>();
+
+        catalog.Get("TEST-A")!.Available.ShouldBe(10);
+    }
 }

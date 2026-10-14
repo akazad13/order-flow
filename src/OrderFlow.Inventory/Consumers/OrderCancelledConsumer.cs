@@ -7,6 +7,7 @@ namespace OrderFlow.Inventory.Consumers;
 /// <summary>
 /// Puts held stock back on sale (spec 003, AC-3). An order cancelled for a shortage held
 /// nothing, and a repeated cancellation finds nothing left, so both are no-ops (R-1, R-2).
+/// An order cancelled before its placement arrived is remembered as released (spec 006, AC-4).
 /// </summary>
 public sealed class OrderCancelledConsumer(ICatalogStore catalog, TimeProvider clock) : IConsumer<OrderCancelled>
 {
@@ -15,6 +16,8 @@ public sealed class OrderCancelledConsumer(ICatalogStore catalog, TimeProvider c
         var released = await catalog.ReleaseAsync(context.Message.OrderId, context.CancellationToken);
         if (released.Count == 0)
         {
+            // Nothing to announce, but a first decision (Released) may need saving.
+            await catalog.SaveChangesAsync(context.CancellationToken);
             return;
         }
 

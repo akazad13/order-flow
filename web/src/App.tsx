@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { getInbox, getOrder, placeOrder, type InboxMessage, type Order } from './api/clients';
+import { cancelOrder, getInbox, getOrder, placeOrder, type InboxMessage, type Order } from './api/clients';
 import { watchOrder } from './api/live';
 
 // The inbox is still polled; order status is pushed (spec 005).
@@ -10,11 +10,15 @@ function newer(current: Order | null, next: Order): Order {
   return current?.orderId === next.orderId && current.status !== 'Pending' && next.status === 'Pending' ? current : next;
 }
 
-// Same plain words as the customer's inbox (specs 002, 003).
+// Same plain words as the customer's inbox (specs 002, 003, 006). A Record over the generated
+// union: a reason added to the contract fails the build until it has words here.
 const CANCELLATION_TEXT: Record<NonNullable<Order['cancellation']>['reason'], string> = {
   OutOfStock: 'some items are out of stock',
   PaymentDeclined: 'your payment was declined',
+  CustomerRequested: 'you cancelled it',
 };
+
+type CancelState = 'idle' | 'cancelling' | 'too-late';
 
 export function App() {
   const [customerId, setCustomerId] = useState('customer-1');
@@ -23,6 +27,7 @@ export function App() {
   const [order, setOrder] = useState<Order | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [inbox, setInbox] = useState<InboxMessage[]>([]);
+  const [cancelState, setCancelState] = useState<CancelState>('idle');
 
   const orderId = order?.orderId;
   const orderCustomerId = order?.customerId;
@@ -68,11 +73,24 @@ export function App() {
     event.preventDefault();
     setErrors([]);
     const result = await placeOrder(customerId, sku, quantity);
+    setCancelState('idle');
     if (result.ok) {
       setOrder(result.order);
     } else {
       setOrder(null);
       setErrors(Object.values(result.problem?.errors ?? {}).flat());
+    }
+  }
+
+  // Spec 006: the state machine decides; the outcome arrives as a push (spec 005).
+  async function handleCancel() {
+    if (!orderId) return;
+    setCancelState('cancelling');
+    const result = await cancelOrder(orderId);
+    if (result.outcome === 'too-late') {
+      setCancelState('too-late');
+    } else if (result.outcome === 'already-cancelled') {
+      setOrder((current) => newer(current, result.order));
     }
   }
 
@@ -119,6 +137,15 @@ export function App() {
               <p>Reason: {CANCELLATION_TEXT[order.cancellation.reason]}</p>
               <p>{order.cancellation.detail}</p>
             </>
+          )}
+          {isPending && cancelState === 'idle' && (
+            <button type="button" onClick={handleCancel}>
+              Cancel order
+            </button>
+          )}
+          {isPending && cancelState === 'cancelling' && <p>Cancelling...</p>}
+          {(cancelState === 'too-late' || (cancelState === 'cancelling' && order.status === 'Confirmed')) && (
+            <p role="status">Too late to cancel: your order is already confirmed.</p>
           )}
         </section>
       )}

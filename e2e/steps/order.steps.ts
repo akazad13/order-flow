@@ -36,6 +36,18 @@ Given('their payments will be declined', async ({ request, scenario }) => {
   expect(response.ok()).toBeTruthy();
 });
 
+Given('their payments are left undecided', async ({ request, scenario }) => {
+  // Spec 006, Q4: keeps the order Pending until the customer cancels it.
+  const response = await request.put(`${paymentUrl}/test/stalls/${scenario.customerId}`);
+  expect(response.ok()).toBeTruthy();
+});
+
+When('they cancel the order', async ({ page }) => {
+  const order = page.getByRole('region', { name: 'Order' });
+  await expect(order).toContainText('Status: Pending');
+  await order.getByRole('button', { name: 'Cancel order' }).click();
+});
+
 When('they order {int} of {string}', async ({ page }, quantity: number, sku: string) => {
   await placeOrder(page, sku, quantity);
 });
