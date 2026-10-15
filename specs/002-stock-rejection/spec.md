@@ -43,4 +43,4 @@ When an item is out of stock, or does not exist, the order is silently left Pend
 Decided on the user's behalf (they asked to proceed without stopping, 2026-10-14). Revisit in review.
 
 - [x] **Q1 Cancelled or a separate Rejected status?** (answer: Cancelled, with a reason. One end state is simpler for customers; the reason tells the cases apart. Spec 003 reuses it.)
-- [x] **Q2 How much detail does the customer get?** (answer: the inbox says "some items are out of stock"; the order itself carries the detail per item, shown in the UI.)
+- [x] **Q2 How much detail does the customer get?** (answer: the inbox says "some items are out of stock"; the order itself carries the detail per item, shown in the UI.) (Changed by [spec 020](../020-itemised-shortage-message/spec.md), after the user's review: the inbox names each short item too.)

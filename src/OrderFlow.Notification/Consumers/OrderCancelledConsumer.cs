@@ -7,13 +7,14 @@ namespace OrderFlow.Notification.Consumers;
 /// <summary>
 /// Tells the customer why their order was cancelled, in plain words (specs 002, 003, 006, 016). A
 /// reason it does not know still gets the generic text, though a new reason now comes with a new
-/// version of the event (spec 016). Reads v2; v1 was retired in spec 018.
+/// version of the event (spec 016). Reads v2; v1 was retired in spec 018. A shortage names each
+/// short item, in the words of the order page (spec 020).
 /// </summary>
 public sealed class OrderCancelledConsumer(IFakeInbox inbox, TimeProvider clock) : IConsumer<OrderCancelledV2>
 {
-    public static string TextFor(string reason) => reason switch
+    public static string TextFor(string reason, string detail) => reason switch
     {
-        CancellationReasons.OutOfStock => "Your order was cancelled: some items are out of stock",
+        CancellationReasons.OutOfStock => $"Your order was cancelled: some items are out of stock. {detail}",
         CancellationReasons.PaymentDeclined => "Your order was cancelled: your payment was declined",
         CancellationReasons.CustomerRequested => "Your order was cancelled at your request",
         CancellationReasons.StaffRequested => "Your order was cancelled by our support team at your request",
@@ -24,7 +25,7 @@ public sealed class OrderCancelledConsumer(IFakeInbox inbox, TimeProvider clock)
 
     private async Task Handle(ConsumeContext context, OrderCancelledV2 order)
     {
-        await inbox.DeliverAsync(new InboxMessage(Guid.NewGuid(), order.CustomerId, order.OrderId, TextFor(order.Reason), order.CancelledAt, clock.GetUtcNow()), context.CancellationToken);
+        await inbox.DeliverAsync(new InboxMessage(Guid.NewGuid(), order.CustomerId, order.OrderId, TextFor(order.Reason, order.Detail), order.CancelledAt, clock.GetUtcNow()), context.CancellationToken);
         await inbox.SaveChangesAsync(context.CancellationToken);
     }
 }

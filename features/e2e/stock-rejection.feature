@@ -1,6 +1,6 @@
-# Spec: specs/002-stock-rejection/spec.md (AC-4, AC-5)
+# Spec: specs/002-stock-rejection/spec.md (AC-4, AC-5), specs/020-itemised-shortage-message/spec.md (AC-3)
 # Runs in: e2e/ (Playwright + playwright-bdd) against docker compose
-@e2e @spec-002
+@e2e @spec-002 @spec-020
 Feature: Reject an order when stock is short
 
   Scenario: Customer sees the order cancelled for a shortage and is told
@@ -12,4 +12,4 @@ Feature: Reject an order when stock is short
     And their inbox shows, in order:
       | message                                               |
       | We received your order                                |
-      | Your order was cancelled: some items are out of stock |
+      | Your order was cancelled: some items are out of stock. Only 1 of {that item} available, 2 requested. |

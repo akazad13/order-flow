@@ -129,8 +129,9 @@ Then('their inbox shows {string}', async ({ page }, text: string) => {
   await expect(page.getByRole('region', { name: 'Inbox' })).toContainText(text, { timeout: EVENTUAL_TIMEOUT_MS });
 });
 
-Then('their inbox shows, in order:', async ({ page }, table) => {
-  const expected = table.hashes().map((row: Record<string, string>) => row.message);
+Then('their inbox shows, in order:', async ({ page, scenario }, table) => {
+  // "{that item}" stands for the scenario's own SKU (spec 020).
+  const expected = table.hashes().map((row: Record<string, string>) => row.message.replaceAll('{that item}', scenario.sku ?? ''));
   await expect(page.getByRole('region', { name: 'Inbox' }).getByRole('listitem')).toHaveText(expected, {
     timeout: EVENTUAL_TIMEOUT_MS,
   });

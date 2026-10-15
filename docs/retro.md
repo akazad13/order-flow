@@ -73,6 +73,8 @@ What the table says:
 - A new version of an event is a new message that readers learn before it is published (ADR 0010); `OrderCancelled` v2 gives staff cancellations their own reason ([spec 016](../specs/016-event-versions/spec.md)).
 - Admins manage stock on a stock page; setting stock is no longer a test-only endpoint ([spec 017](../specs/017-admin-manages-stock/spec.md)).
 - `OrderCancelled` v1 is retired, the full ADR 0010 cycle done once; a stray v1 would land in a skipped queue, not vanish ([spec 018](../specs/018-retire-order-cancelled-v1/spec.md)).
+- The decisions taken on the user's behalf were reviewed (2026-10-15): the user kept all but four, now in "Still open".
+- The inbox names the short items when stock is short ([spec 020](../specs/020-itemised-shortage-message/spec.md)).
 - A production profile for Keycloak (optimized build, its own PostgreSQL, HTTPS, secrets outside git, a clean production realm), smoke-tested in CI ([spec 019](../specs/019-production-keycloak/spec.md), ADR 0011).
 
 ## Still open
@@ -80,7 +82,9 @@ What the table says:
 | Item | Why it matters | Where |
 | --- | --- | --- |
 | Push to GitHub, see CI green, protect `main` with the CI jobs | Every gate here only bites in CI | Spec 000, T15 (deferred) |
-| Review the decisions taken on the user's behalf (56 of 60 recorded; the user answered 4) | Product choices (cancel rules, refund wording, push vs. poll) | `grep -n "\[x\] \*\*Q" specs/*/spec.md` |
+| Cancel confirmed orders (with a refund), not only Pending ones | Reviewed 2026-10-15: the user wants it (was spec 006's rule) | Spec 006 |
+| Keep tokens on the server (a backend for the web app); the browser holds only a secure cookie | Reviewed 2026-10-15: the user wants it (was spec 015, Q4: refresh token in session storage) | Spec 015 |
+| Close the services' own ports in the production profile; only the web server and Keycloak are reachable | Reviewed 2026-10-15: the user wants it | Spec 019, ADR 0011 |
 | Stock decisions (`reservations`) and finished order trackers (`OrderState`) are never deleted | Kept on purpose: they are what makes a late repeat harmless (spec 004). Removing them needs a retention window longer than any redelivery. Outbox and inbox tables are not a problem: MassTransit deletes delivered messages and its `InboxCleanupService` removes processed ones after the duplicate-detection window | Spec 004 non-goal |
 | Deploying the production profile somewhere real (a domain, a trusted certificate, backups), staff reading inboxes | The production profile runs and is smoke-tested locally and in CI since spec 019 | Specs 015 and 019 non-goals, ADR 0011 |
 | Starting and stopping copies automatically; the web server noticing copies started after it | Two copies of each service run since spec 013, but a fixed number, set in compose | Spec 013 non-goals |

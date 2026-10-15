@@ -42,11 +42,15 @@ public sealed class InboxSteps(NotificationServiceFactory service)
     }
 
     [When("an OrderCancelled event with reason {string} arrives for customer {string}")]
-    public async Task WhenAnOrderCancelledEventArrives(string reason, string customerId)
+    public Task WhenAnOrderCancelledEventArrives(string reason, string customerId) =>
+        WhenAnOrderCancelledEventWithDetailArrives(reason, "detail", customerId);
+
+    [When("an OrderCancelled event with reason {string} and detail {string} arrives for customer {string}")]
+    public async Task WhenAnOrderCancelledEventWithDetailArrives(string reason, string detail, string customerId)
     {
         // The current version (v2, spec 016).
         _ = service.CreateClient();
-        await service.Harness.Bus.Publish(new OrderCancelledV2(_orderId, customerId, reason, "detail", DateTimeOffset.UtcNow));
+        await service.Harness.Bus.Publish(new OrderCancelledV2(_orderId, customerId, reason, detail, DateTimeOffset.UtcNow));
 
         var consumer = service.Harness.GetConsumerHarness<OrderCancelledConsumer>();
         await Eventually.True(() => consumer.Consumed.Select<OrderCancelledV2>(m => m.Context.Message.OrderId == _orderId).Any(), "OrderCancelled v2 (Consumed)");
