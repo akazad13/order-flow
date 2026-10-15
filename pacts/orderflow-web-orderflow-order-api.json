@@ -369,58 +369,6 @@
       "type": "Synchronous/HTTP"
     },
     {
-      "description": "a request to cancel a confirmed order",
-      "pending": false,
-      "providerStates": [
-        {
-          "name": "a confirmed order exists",
-          "params": {
-            "total": 37
-          }
-        }
-      ],
-      "request": {
-        "generators": {
-          "path": {
-            "expression": "/orders/${orderId}/cancellation",
-            "type": "ProviderState"
-          }
-        },
-        "headers": {
-          "Authorization": [
-            "Bearer a-test-access-token"
-          ]
-        },
-        "matchingRules": {
-          "header": {
-            "Authorization": {
-              "combine": "AND",
-              "matchers": [
-                {
-                  "match": "regex",
-                  "regex": "^Bearer .+$"
-                }
-              ]
-            }
-          },
-          "path": {
-            "combine": "AND",
-            "matchers": [
-              {
-                "match": "type"
-              }
-            ]
-          }
-        },
-        "method": "POST",
-        "path": "/orders/8f6c1d1e-6f0b-4c64-9d7e-0a8f6b1b2c3d/cancellation"
-      },
-      "response": {
-        "status": 409
-      },
-      "type": "Synchronous/HTTP"
-    },
-    {
       "description": "a request to cancel a pending order",
       "pending": false,
       "providerStates": [
@@ -466,6 +414,55 @@
       },
       "response": {
         "status": 202
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "a request to cancel an order confirmed too long ago",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "an order confirmed too long ago to cancel exists"
+        }
+      ],
+      "request": {
+        "generators": {
+          "path": {
+            "expression": "/orders/${orderId}/cancellation",
+            "type": "ProviderState"
+          }
+        },
+        "headers": {
+          "Authorization": [
+            "Bearer a-test-access-token"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "Authorization": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^Bearer .+$"
+                }
+              ]
+            }
+          },
+          "path": {
+            "combine": "AND",
+            "matchers": [
+              {
+                "match": "type"
+              }
+            ]
+          }
+        },
+        "method": "POST",
+        "path": "/orders/8f6c1d1e-6f0b-4c64-9d7e-0a8f6b1b2c3d/cancellation"
+      },
+      "response": {
+        "status": 409
       },
       "type": "Synchronous/HTTP"
     },

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: OrderFlow Order API
-  version: 2.0.0
+  version: 2.1.0
   description: |
     Customer-facing API for placing, reading and cancelling orders. Specs 000 to 003, 006 and 012.
     Status changes are pushed by the hub in contracts/realtime (spec 005).
@@ -83,9 +83,10 @@ paths:
       tags: [orders]
       summary: Ask to cancel an order
       description: |
-        Spec 006. A Pending order: the request is recorded and the order service decides
-        (202); the outcome is pushed to watchers (spec 005). If the order is confirmed before
-        the request is handled, it stays Confirmed. Repeating the request is harmless.
+        Spec 006. A Pending order, or a Confirmed one still within its cancellation window
+        (`cancellableUntil`, spec 022): the request is recorded and the order service decides
+        (202); the outcome is pushed to watchers (spec 005). A request made in time is honoured
+        even if the order is confirmed before it is handled. Repeating the request is harmless.
         Staff may cancel any order (spec 015): the reason is StaffRequested (spec 016), and the
         detail says the support team cancelled it at the customer's request.
       parameters:
@@ -113,7 +114,7 @@ paths:
         '404':
           description: No order with that ID for the logged-in customer (any order, for staff).
         '409':
-          description: The order is already confirmed and cannot be cancelled.
+          description: Too late to cancel; the order was confirmed longer ago than the cancellation window (spec 022).
           content:
             application/problem+json:
               schema:
@@ -180,6 +181,14 @@ components:
         placedAt:
           type: string
           format: date-time
+        cancellableUntil:
+          type: [string, 'null']
+          format: date-time
+          description: |
+            Until when a Confirmed order can still be cancelled (spec 022): its confirmation time plus the
+            cancellation window. Null for a Pending order (it can be cancelled at any time) and for a
+            Cancelled one. Optional, so readers of the live updates that predate it stay valid; the
+            service always sends it.
     Cancellation:
       type: object
       required: [reason, detail]
@@ -198,7 +207,7 @@ components:
           type: string
         title:
           type: string
-          examples: [The order is already confirmed.]
+          examples: [Too late to cancel.]
         status:
           type: integer
         detail:

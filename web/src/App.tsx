@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { cancelOrder, getInbox, getOrder, placeOrder, type InboxMessage, type Order } from './api/clients';
+import { canCancel } from './orders';
 import { watchOrder } from './api/live';
 import { currentCustomer, logIn, logOut, onLoginChanged, type Customer } from './auth';
 import { StaffLookup } from './StaffLookup';
@@ -8,9 +9,12 @@ import { StockAdmin } from './StockAdmin';
 // The inbox is still polled; order status is pushed (spec 005).
 export const POLL_MS = 1000;
 
-/** Status only moves forward: never replace a final status with Pending (spec 005, AC-5). */
+// Status only moves forward (spec 005, AC-5): Pending, then Confirmed, then possibly Cancelled (spec 022).
+const STEP: Record<Order['status'], number> = { Pending: 0, Confirmed: 1, Cancelled: 2 };
+
+/** Never replace a later status with an earlier one. */
 function newer(current: Order | null, next: Order): Order {
-  return current?.orderId === next.orderId && current.status !== 'Pending' && next.status === 'Pending' ? current : next;
+  return current?.orderId === next.orderId && STEP[next.status] < STEP[current.status] ? current : next;
 }
 
 // Same plain words as the customer's inbox (specs 002, 003, 006). A Record over the generated
@@ -51,12 +55,14 @@ export function App() {
 
   const orderId = order?.orderId;
   const orderCustomerId = order?.customerId;
-  const isPending = order?.status === 'Pending';
+  // Spec 022: Pending, or Confirmed and still within its cancellation window.
+  const cancellable = order ? canCancel(order) : false;
 
-  // Watch the order while it is Pending (spec 005): updates are pushed, and the order is read
-  // once after each (re)join, for anything that changed before (AC-3). No timer (AC-4).
+  // Watch the order while it can still change (spec 005; spec 022: a confirmed order can still be
+  // cancelled): updates are pushed, and the order is read once after each (re)join, for anything
+  // that changed before (AC-3). No timer (AC-4).
   useEffect(() => {
-    if (!orderId || !isPending) return;
+    if (!orderId || !cancellable) return;
     let active = true;
     const unwatch = watchOrder(
       orderId,
@@ -74,7 +80,7 @@ export function App() {
       setWatching(false);
       unwatch();
     };
-  }, [orderId, isPending]);
+  }, [orderId, cancellable]);
 
   useEffect(() => {
     if (!orderCustomerId) return;
@@ -174,15 +180,13 @@ export function App() {
               <p>{order.cancellation.detail}</p>
             </>
           )}
-          {isPending && cancelState === 'idle' && (
+          {cancellable && cancelState === 'idle' && (
             <button type="button" onClick={handleCancel}>
               Cancel order
             </button>
           )}
-          {isPending && cancelState === 'cancelling' && <p>Cancelling...</p>}
-          {(cancelState === 'too-late' || (cancelState === 'cancelling' && order.status === 'Confirmed')) && (
-            <p role="status">Too late to cancel: your order is already confirmed.</p>
-          )}
+          {cancelState === 'cancelling' && order.status !== 'Cancelled' && <p>Cancelling...</p>}
+          {cancelState === 'too-late' && <p role="status">Too late to cancel: the time to cancel this order has passed.</p>}
         </section>
       )}
 

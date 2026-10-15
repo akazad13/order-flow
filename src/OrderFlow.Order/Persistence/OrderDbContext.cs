@@ -40,6 +40,7 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         order.Property(o => o.CustomerId).HasMaxLength(200);
         order.Property(o => o.Status).HasConversion<string>().HasMaxLength(32);
         order.Property(o => o.Total).HasPrecision(12, 2);
+        order.Property(o => o.CancellableUntil); // spec 022
 
         // Lines never change after placing; one jsonb column is simpler than a child table.
         order.Property(o => o.Lines)

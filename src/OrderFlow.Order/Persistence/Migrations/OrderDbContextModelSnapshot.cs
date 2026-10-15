@@ -196,6 +196,9 @@ namespace OrderFlow.OrderService.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CancellableUntil")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("CustomerId")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -223,6 +226,9 @@ namespace OrderFlow.OrderService.Persistence.Migrations
                 {
                     b.Property<Guid>("CorrelationId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("CancellableUntil")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("CurrentState")
                         .IsRequired()

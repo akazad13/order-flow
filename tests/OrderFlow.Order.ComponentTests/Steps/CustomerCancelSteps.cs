@@ -55,12 +55,32 @@ public sealed class CustomerCancelSteps(OrderServiceFactory service, OrderLifecy
         order!.OrderId.ShouldBe(lifecycle.Placed.OrderId);
     }
 
-    [Then("the request is refused because the order is already confirmed")]
-    public async Task ThenTheRequestIsRefusedAsConfirmed()
+    [Then("the request is refused as too late")]
+    public async Task ThenTheRequestIsRefusedAsTooLate()
     {
         _response!.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         var problem = await _response.Content.ReadFromJsonAsync<ProblemDetails>();
-        problem!.Title.ShouldBe("The order is already confirmed.");
+        problem!.Title.ShouldBe("Too late to cancel.");
+    }
+
+    [When("{int} hours pass")]
+    public void WhenHoursPass(int hours) => service.Clock.Advance(TimeSpan.FromHours(hours));
+
+    [When("a cancellation asked for {int} hours after confirmation is handled {int} hours after it")]
+    public async Task WhenALateHandledCancellationArrives(int askedAfter, int handledAfter)
+    {
+        // Spec 022, AC-3: the request's own time decides, not when it is handled.
+        var confirmedAt = service.Clock.GetUtcNow();
+        service.Clock.Advance(TimeSpan.FromHours(handledAfter));
+        await service.Harness.Bus.Publish(new OrderCancellationRequested(lifecycle.Placed.OrderId, confirmedAt.AddHours(askedAfter), CancellationRequesters.Customer));
+    }
+
+    [Then("the order can be cancelled until {int} hours after it was confirmed")]
+    public async Task ThenTheOrderCanBeCancelledUntil(int hours)
+    {
+        // The clock has not moved since the payment, so "now" is the confirmation time.
+        var order = await service.ClientFor(lifecycle.Placed.CustomerId).GetFromJsonAsync<OrderResponse>($"/orders/{lifecycle.Placed.OrderId}");
+        order!.CancellableUntil.ShouldBe(service.Clock.GetUtcNow().AddHours(hours));
     }
 
     [Then("the order is returned as already cancelled")]

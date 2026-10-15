@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { cancelOrder, getOrder, type Order } from './api/clients';
+import { canCancel } from './orders';
 import { watchOrder } from './api/live';
 
 // Staff read the reason about the customer, not to them (spec 015). A Record over the generated
@@ -24,7 +25,8 @@ export function StaffLookup() {
   const [cancelState, setCancelState] = useState<CancelState>('idle');
 
   const found = lookup.state === 'found' ? lookup.order : null;
-  const watchedId = found?.status === 'Pending' ? found.orderId : undefined;
+  const cancellable = found ? canCancel(found) : false; // spec 022
+  const watchedId = cancellable ? found!.orderId : undefined;
 
   useEffect(() => {
     if (!watchedId) return;
@@ -84,15 +86,13 @@ export function StaffLookup() {
               <p>{found.cancellation.detail}</p>
             </>
           )}
-          {found.status === 'Pending' && cancelState === 'idle' && (
+          {cancellable && cancelState === 'idle' && (
             <button type="button" onClick={handleCancel}>
               Cancel for the customer
             </button>
           )}
-          {found.status === 'Pending' && cancelState === 'cancelling' && <p>Cancelling...</p>}
-          {(cancelState === 'too-late' || (cancelState === 'cancelling' && found.status === 'Confirmed')) && (
-            <p role="status">Too late to cancel: the order is already confirmed.</p>
-          )}
+          {cancelState === 'cancelling' && found.status !== 'Cancelled' && <p>Cancelling...</p>}
+          {cancelState === 'too-late' && <p role="status">Too late to cancel: the time to cancel this order has passed.</p>}
         </div>
       )}
     </section>

@@ -8,6 +8,9 @@ public sealed class OrderState : SagaStateMachineInstance
     public Guid CorrelationId { get; set; }
 
     public string CurrentState { get; set; } = null!;
+
+    /// <summary>Set when the order is confirmed: until when a cancellation request is honoured (spec 022).</summary>
+    public DateTimeOffset? CancellableUntil { get; set; }
 }
 
 /// <summary>
@@ -19,6 +22,8 @@ public sealed class OrderState : SagaStateMachineInstance
 ///                       +-> StockRejected -> Cancelled     +-> PaymentFailed -> Cancelled
 ///                       |                                  |
 ///                       +-> CancellationRequested -> Cancelled (customer, spec 006, from either state)
+///
+///   Confirmed -> CancellationRequested (asked for by its deadline, spec 022) -> Cancelled
 /// </summary>
 public sealed class OrderStateMachine : MassTransitStateMachine<OrderState>
 {
@@ -91,13 +96,17 @@ public sealed class OrderStateMachine : MassTransitStateMachine<OrderState>
                 .Activity(x => x.OfType<CancelAtCustomerRequestActivity>())
                 .TransitionTo(Cancelled));
 
-        // Status only moves forward (spec 001, R-4); final states ignore every earlier event.
-        // Too late to cancel (spec 006, AC-2): the customer sees Confirmed.
+        // Status only moves forward (spec 001, R-4); a confirmed order ignores every earlier event.
+        // Spec 022: it can still be cancelled by a request made by its deadline (the request's own
+        // time decides, AC-3); a later one is too late, and the order stays Confirmed.
         During(Confirmed,
             Ignore(OrderPlaced),
             Ignore(StockReserved),
             Ignore(PaymentSucceeded),
-            Ignore(CancellationRequested));
+            When(CancellationRequested, context => InTime(context.Saga, context.Message))
+                .Activity(x => x.OfType<CancelAtCustomerRequestActivity>())
+                .TransitionTo(Cancelled),
+            Ignore(CancellationRequested, context => !InTime(context.Saga, context.Message)));
 
         During(Cancelled,
             Ignore(OrderPlaced),
@@ -107,6 +116,9 @@ public sealed class OrderStateMachine : MassTransitStateMachine<OrderState>
             Ignore(PaymentFailed),
             Ignore(CancellationRequested));
     }
+
+    private static bool InTime(OrderState order, OrderCancellationRequested request) =>
+        order.CancellableUntil is { } until && request.RequestedAt <= until;
 
     public State AwaitingStock { get; private set; } = null!;
     public State AwaitingPayment { get; private set; } = null!;

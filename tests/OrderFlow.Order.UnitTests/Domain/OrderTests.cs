@@ -86,7 +86,7 @@ public class OrderTests
         var order = Placed();
         order.RecordStockHeld(37.00m);
 
-        order.Confirm();
+        order.Confirm(Now, Window);
 
         order.Status.ShouldBe(OrderStatus.Confirmed);
     }
@@ -94,7 +94,7 @@ public class OrderTests
     [Fact]
     public void Order_cannot_be_confirmed_before_stock_is_held()
     {
-        Should.Throw<InvalidOperationException>(() => Placed().Confirm());
+        Should.Throw<InvalidOperationException>(() => Placed().Confirm(Now, Window));
     }
 
     [Fact]
@@ -102,9 +102,9 @@ public class OrderTests
     {
         var order = Placed();
         order.RecordStockHeld(37.00m);
-        order.Confirm();
+        order.Confirm(Now, Window);
 
-        order.Confirm();
+        order.Confirm(Now, Window);
         order.RecordStockHeld(99.00m);
 
         order.Status.ShouldBe(OrderStatus.Confirmed);
@@ -129,7 +129,7 @@ public class OrderTests
         order.RecordStockHeld(37.00m);
         order.Cancel("PaymentDeclined", "Card declined");
 
-        Should.Throw<InvalidOperationException>(() => order.Confirm());
+        Should.Throw<InvalidOperationException>(() => order.Confirm(Now, Window));
         order.Status.ShouldBe(OrderStatus.Cancelled);
     }
 
@@ -145,15 +145,36 @@ public class OrderTests
     }
 
     [Fact]
+    public void A_confirmed_order_can_be_cancelled_until_its_deadline()
+    {
+        // Spec 022, R-1 and R-2: the deadline is fixed at confirmation; the request's time decides.
+        var order = Placed();
+        order.RecordStockHeld(37.00m);
+        order.Confirm(Now, Window);
+        order.Confirm(Now.AddHours(5), TimeSpan.FromDays(7));
+
+        order.CancellableUntil.ShouldBe(Now + Window);
+        order.CanBeCancelledAt(Now + Window).ShouldBeTrue();
+        order.CanBeCancelledAt(Now + Window + TimeSpan.FromSeconds(1)).ShouldBeFalse();
+        Should.Throw<InvalidOperationException>(() => order.Cancel("CustomerRequested", "late", Now.AddHours(25)));
+
+        order.Cancel("CustomerRequested", "in time", Now.AddHours(23));
+        order.Status.ShouldBe(OrderStatus.Cancelled);
+    }
+
+    [Fact]
     public void A_confirmed_order_cannot_be_cancelled_by_these_flows()
     {
         var order = Placed();
         order.RecordStockHeld(37.00m);
-        order.Confirm();
+        order.Confirm(Now, Window);
 
         Should.Throw<InvalidOperationException>(() => order.Cancel("PaymentDeclined", "late"));
         order.Status.ShouldBe(OrderStatus.Confirmed);
     }
+
+    private static readonly DateTimeOffset Now = new(2026, 10, 15, 12, 0, 0, TimeSpan.Zero);
+    private static readonly TimeSpan Window = TimeSpan.FromHours(24);
 
     private static Order Placed() => Order.Place("customer-1", [new OrderLine("SKU-001", 2)], Clock).Order!;
 }

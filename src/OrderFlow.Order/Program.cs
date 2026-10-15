@@ -1,5 +1,6 @@
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using OrderFlow.OrderService;
 using OrderFlow.OrderService.Api;
 using OrderFlow.OrderService.Persistence;
 using OrderFlow.OrderService.StateMachine;
@@ -55,6 +56,7 @@ builder.AddOrderFlowServiceDefaults("order", bus =>
 });
 
 builder.Services.AddSignalR();
+builder.Services.Configure<OrderOptions>(builder.Configuration.GetSection(OrderOptions.Section)); // spec 022
 builder.AddOrderFlowAuthentication(); // spec 012, ADR 0008
 
 builder.Services.AddScoped<RecordStockHeldActivity>();

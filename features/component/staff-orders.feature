@@ -18,11 +18,12 @@ Feature: Staff support customers' orders (Order service)
     And the order is cancelled with reason "StaffRequested" and detail "Cancelled by our support team at the customer's request."
     And OrderCancelled is published for that order with reason "StaffRequested"
 
-  Scenario: Too late for staff too, once the order is confirmed
+  Scenario: Too late for staff too, once the cancellation window has passed
     When stock is reserved for that order with a total of 37.00
     And payment succeeds for that order
+    And 25 hours pass
     And staff member "sam" asks to cancel that order
-    Then the request is refused because the order is already confirmed
+    Then the request is refused as too late
     And no cancellation request is published
 
   Scenario: Staff watch any customer's order

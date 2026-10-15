@@ -43,6 +43,12 @@ public sealed class Order
     public Cancellation? Cancellation { get; private set; }
 
     /// <summary>
+    /// Until when a confirmed order can still be cancelled: fixed when it is confirmed (spec 022, R-2).
+    /// Null for an order that was never confirmed, or was confirmed before spec 022.
+    /// </summary>
+    public DateTimeOffset? CancellableUntil { get; private set; }
+
+    /// <summary>
     /// Spec 000, AC-1 and AC-2: a valid order starts Pending; an invalid one is
     /// rejected with one error per offending field. Spec 001: lines for the same
     /// SKU are merged.
@@ -99,10 +105,11 @@ public sealed class Order
     }
 
     /// <summary>
-    /// Spec 001: confirmed only after the stock hold (R-3); status never moves
-    /// back (R-4), so confirming twice is harmless.
+    /// Spec 001: confirmed only after the stock hold (R-3); status never moves back (R-4), so
+    /// confirming twice is harmless and keeps the first deadline. It can be cancelled until
+    /// <paramref name="confirmedAt"/> plus <paramref name="cancelWindow"/> (spec 022).
     /// </summary>
-    public void Confirm()
+    public void Confirm(DateTimeOffset confirmedAt, TimeSpan cancelWindow)
     {
         if (Status == OrderStatus.Cancelled)
         {
@@ -114,28 +121,43 @@ public sealed class Order
             throw new InvalidOperationException($"Order {Id} cannot be confirmed before its stock is held.");
         }
 
+        if (Status == OrderStatus.Confirmed)
+        {
+            return;
+        }
+
         Status = OrderStatus.Confirmed;
+        CancellableUntil = confirmedAt + cancelWindow;
     }
 
     /// <summary>
-    /// Cancelled is final (spec 002, R-3); cancelling again is harmless. A confirmed order is
-    /// never cancelled, by the stock or payment flows (spec 003, R-3) or by the customer (spec 006, AC-2).
+    /// Cancelled is final (spec 002, R-3); cancelling again is harmless. A confirmed order is never
+    /// cancelled by the stock or payment flows (spec 003, R-3); a request made by
+    /// <paramref name="requestedAt"/> may cancel it until its deadline (spec 022, R-1).
     /// </summary>
-    public void Cancel(string reason, string detail)
+    public void Cancel(string reason, string detail, DateTimeOffset? requestedAt = null)
     {
         if (Status == OrderStatus.Cancelled)
         {
             return;
         }
 
-        if (Status == OrderStatus.Confirmed)
+        if (Status == OrderStatus.Confirmed && !CanBeCancelledAt(requestedAt))
         {
-            throw new InvalidOperationException($"Order {Id} is confirmed and cannot be cancelled.");
+            throw new InvalidOperationException($"Order {Id} is confirmed and can no longer be cancelled.");
         }
 
         Status = OrderStatus.Cancelled;
         Cancellation = new Cancellation(reason, detail);
     }
+
+    /// <summary>A Pending order always can; a Confirmed one until its deadline (spec 022, R-1); a Cancelled one never.</summary>
+    public bool CanBeCancelledAt(DateTimeOffset? at) => Status switch
+    {
+        OrderStatus.Pending => true,
+        OrderStatus.Confirmed => at is { } time && CancellableUntil is { } until && time <= until,
+        _ => false,
+    };
 }
 
 public sealed record PlaceOrderResult(Order? Order, IReadOnlyDictionary<string, string[]> Errors)

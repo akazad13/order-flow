@@ -17,7 +17,7 @@ A customer who changes their mind has no way out: the order runs to Confirmed or
 ## Acceptance criteria
 
 - **AC-1 Cancel a pending order.** Given a Pending order, when the customer asks to cancel it, then the request is accepted, the order becomes Cancelled with the reason "customer requested", and the shop announces the cancellation once.
-- **AC-2 Too late once confirmed.** Given a Confirmed order, when the customer asks to cancel it, then the request is refused with a conflict that says the order is already confirmed, and the order is unchanged.
+- **AC-2 Too late once confirmed.** Given a Confirmed order, when the customer asks to cancel it, then the request is refused with a conflict that says the order is already confirmed, and the order is unchanged. (Changed by [spec 022](../022-cancel-confirmed-orders/spec.md), after the user's review: a confirmed order can be cancelled within a window, 24 hours by default.)
 - **AC-3 Already cancelled.** Asking to cancel a Cancelled order changes nothing and returns the order as it is.
 - **AC-4 Stock goes back.** Stock held for the order is released once. Stock not yet held when the order was cancelled is never held for it.
 - **AC-5 No money kept.** A payment not yet taken is never taken. A payment already taken is refunded once, and the refund is announced.

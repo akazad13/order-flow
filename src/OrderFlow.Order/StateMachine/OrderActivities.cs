@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using MassTransit;
 using OrderFlow.Contracts.Events;
 using OrderFlow.OrderService.Persistence;
@@ -25,14 +26,16 @@ public sealed class RecordStockHeldActivity(IOrderRepository orders) : IStateMac
 }
 
 /// <summary>Payment succeeded: confirm the order and announce it.</summary>
-public sealed class ConfirmOrderActivity(IOrderRepository orders, TimeProvider clock) : IStateMachineActivity<OrderState, PaymentSucceeded>
+public sealed class ConfirmOrderActivity(IOrderRepository orders, TimeProvider clock, IOptions<OrderOptions> options) : IStateMachineActivity<OrderState, PaymentSucceeded>
 {
     public async Task Execute(BehaviorContext<OrderState, PaymentSucceeded> context, IBehavior<OrderState, PaymentSucceeded> next)
     {
         var order = await orders.GetAsync(context.Message.OrderId, context.CancellationToken)
             ?? throw new InvalidOperationException($"Order {context.Message.OrderId} not found.");
 
-        order.Confirm();
+        // The deadline to cancel is fixed now, on the order and for the state machine (spec 022, R-2).
+        order.Confirm(clock.GetUtcNow(), options.Value.CancelWindow);
+        context.Saga.CancellableUntil = order.CancellableUntil;
         await context.Publish(new OrderConfirmed(order.Id, order.CustomerId, order.Total!.Value, clock.GetUtcNow()));
         await next.Execute(context);
     }
@@ -93,7 +96,7 @@ public sealed class CancelAtCustomerRequestActivity(IOrderRepository orders, Tim
         var (reason, detail) = context.Message.RequestedBy == CancellationRequesters.Staff
             ? (CancellationReasons.StaffRequested, StaffDetail)
             : (CancellationReasons.CustomerRequested, Detail);
-        await OrderCancellation.Cancel(context, orders, clock, context.Message.OrderId, reason, detail);
+        await OrderCancellation.Cancel(context, orders, clock, context.Message.OrderId, reason, detail, context.Message.RequestedAt);
         await next.Execute(context);
     }
 
@@ -107,12 +110,12 @@ public sealed class CancelAtCustomerRequestActivity(IOrderRepository orders, Tim
 
 internal static class OrderCancellation
 {
-    public static async Task Cancel(ConsumeContext context, IOrderRepository orders, TimeProvider clock, Guid orderId, string reason, string detail)
+    public static async Task Cancel(ConsumeContext context, IOrderRepository orders, TimeProvider clock, Guid orderId, string reason, string detail, DateTimeOffset? requestedAt = null)
     {
         var order = await orders.GetAsync(orderId, context.CancellationToken)
             ?? throw new InvalidOperationException($"Order {orderId} not found.");
 
-        order.Cancel(reason, detail);
+        order.Cancel(reason, detail, requestedAt);
 
         // Version 2 only, never both (spec 016, R-2): readers of both would act twice.
         await context.Publish(new OrderCancelledV2(order.Id, order.CustomerId, reason, detail, clock.GetUtcNow()));

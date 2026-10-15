@@ -80,10 +80,11 @@ public static class OrderEndpoints
             case null:
                 return Results.NotFound();
 
-            case OrderStatus.Confirmed:
+            // Spec 022: a confirmed order can be cancelled until its deadline; after that it is final.
+            case OrderStatus.Confirmed when !order.CanBeCancelledAt(clock.GetUtcNow()):
                 return Results.Problem(
-                    title: "The order is already confirmed.",
-                    detail: "A confirmed order cannot be cancelled.",
+                    title: "Too late to cancel.",
+                    detail: "A confirmed order can only be cancelled for a while after it is confirmed, and that time has passed.",
                     statusCode: StatusCodes.Status409Conflict);
 
             case OrderStatus.Cancelled:

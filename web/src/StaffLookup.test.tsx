@@ -77,6 +77,6 @@ describe('StaffLookup (spec 015, AC-5)', () => {
     await lookUp(pending.orderId);
 
     await userEvent.click(await screen.findByRole('button', { name: 'Cancel for the customer' }));
-    expect(await screen.findByRole('status')).toHaveTextContent('Too late to cancel: the order is already confirmed.');
+    expect(await screen.findByRole('status')).toHaveTextContent('Too late to cancel: the time to cancel this order has passed.');
   });
 });

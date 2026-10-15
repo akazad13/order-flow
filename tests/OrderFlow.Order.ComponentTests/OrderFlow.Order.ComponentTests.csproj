@@ -14,6 +14,7 @@
     <PackageReference Include="Reqnroll.xUnit" />
     <PackageReference Include="MassTransit" />
     <PackageReference Include="Shouldly" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,6 +27,7 @@
     <ReqnrollFeatureFiles Include="..\..\features\component\customer-cancel.feature" Link="Features\customer-cancel.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\order-access.feature" Link="Features\order-access.feature" />
     <ReqnrollFeatureFiles Include="..\..\features\component\staff-orders.feature" Link="Features\staff-orders.feature" />
+    <ReqnrollFeatureFiles Include="..\..\features\component\cancel-confirmed-order.feature" Link="Features\cancel-confirmed-order.feature" />
   </ItemGroup>
 
   <ItemGroup>

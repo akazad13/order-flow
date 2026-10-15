@@ -170,11 +170,12 @@ describe('Order API, as the web UI uses it', () => {
         expect(result.outcome).toBe('accepted');
       }));
 
-  it('is refused when cancelling a confirmed order', () =>
+  // Spec 022: a confirmed order can be cancelled within its window; after it, too late.
+  it('is refused when cancelling an order confirmed too long ago', () =>
     provider
       .addInteraction()
-      .given('a confirmed order exists', { total: 37.0 })
-      .uponReceiving('a request to cancel a confirmed order')
+      .given('an order confirmed too long ago to cancel exists')
+      .uponReceiving('a request to cancel an order confirmed too long ago')
       .withRequest('POST', fromProviderState('/orders/${orderId}/cancellation', `/orders/${EXAMPLE_ID}/cancellation`), (request) => request.headers(LOGGED_IN))
       .willRespondWith(409)
       .executeTest(async (mockServer) => {

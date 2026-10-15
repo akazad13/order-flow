@@ -17,7 +17,8 @@ public sealed record OrderResponse(
     IReadOnlyList<OrderLineDto> Lines,
     decimal? Total,
     CancellationDto? Cancellation,
-    DateTimeOffset PlacedAt)
+    DateTimeOffset PlacedAt,
+    DateTimeOffset? CancellableUntil)
 {
     public static OrderResponse From(Order order) => new(
         order.Id,
@@ -26,5 +27,6 @@ public sealed record OrderResponse(
         order.Lines.Select(l => new OrderLineDto(l.Sku, l.Quantity)).ToList(),
         order.Total,
         order.Cancellation is { } c ? new CancellationDto(c.Reason, c.Detail) : null,
-        order.PlacedAt);
+        order.PlacedAt,
+        order.CancellableUntil);
 }

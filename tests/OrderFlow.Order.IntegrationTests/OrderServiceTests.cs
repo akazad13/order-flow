@@ -103,6 +103,8 @@ public sealed class OrderServiceTests(InfrastructureFixture infrastructure, ITes
     public async Task Cancellation_and_payment_racing_end_one_way()
     {
         // Spec 006, AC-6: for each order, the customer cancels at the moment the payment succeeds.
+        // Since spec 022 a confirmed order can still be cancelled (within 24 hours), so every order
+        // ends Cancelled: before it was confirmed, or right after.
         var settings = await SettingsAsync();
         await using var testBus = await TestBus.StartAsync(infrastructure, settings["RabbitMq:VirtualHost"]!);
         testBus.React<OrderPlaced>((m, bus) => bus.Publish(new StockReserved(m.OrderId, m.CustomerId, [], 10.00m, DateTimeOffset.UtcNow)));
@@ -128,24 +130,25 @@ public sealed class OrderServiceTests(InfrastructureFixture infrastructure, ITes
             await testBus.Publish(new PaymentSucceeded(id, Guid.NewGuid(), 10.00m, DateTimeOffset.UtcNow));
             return (await cancel).StatusCode;
         }));
-        answers.ShouldAllBe(code => code == HttpStatusCode.Accepted || code == HttpStatusCode.Conflict);
+        answers.ShouldAllBe(code => code == HttpStatusCode.Accepted);
 
-        // Settled: every order final and nothing left to send, so no further event can appear.
-        await WaitUntil(host, db => db.Set<OrderState>().CountAsync(s => ids.Contains(s.CorrelationId) && (s.CurrentState == "Confirmed" || s.CurrentState == "Cancelled")), ids.Count, "every order final");
+        // Settled: every order cancelled and nothing left to send, so no further event can appear.
+        await WaitUntil(host, db => db.Set<OrderState>().CountAsync(s => ids.Contains(s.CorrelationId) && s.CurrentState == "Cancelled"), ids.Count, "every order cancelled");
         await WaitUntil(host, async db => await db.Set<OutboxMessage>().AnyAsync() ? 0 : 1, 1, "the outbox drained");
-        await testBus.WaitForCount<object>(m => (m is OrderConfirmed c && ids.Contains(c.OrderId)) || (m is OrderCancelledV2 x && ids.Contains(x.OrderId)), ids.Count);
+        await testBus.WaitForCount<OrderCancelledV2>(m => ids.Contains(m.OrderId), ids.Count);
 
         foreach (var id in ids)
         {
             var confirmed = testBus.Received<OrderConfirmed>().Count(m => m.OrderId == id);
             var cancelled = testBus.Received<OrderCancelledV2>().Count(m => m.OrderId == id);
-            (confirmed + cancelled).ShouldBe(1, $"order {id}: {confirmed} confirmed, {cancelled} cancelled");
+            cancelled.ShouldBe(1, $"order {id}: cancelled {cancelled} times");
+            confirmed.ShouldBeLessThanOrEqualTo(1, $"order {id}: confirmed {confirmed} times");
 
             var order = await client.GetFromJsonAsync<OrderResponse>($"/orders/{id}");
-            order!.Status.ShouldBe(confirmed == 1 ? "Confirmed" : "Cancelled");
+            order!.Status.ShouldBe("Cancelled");
         }
 
-        output.WriteLine($"Confirmed first: {testBus.Received<OrderConfirmed>().Count(m => ids.Contains(m.OrderId))}; cancelled first: {testBus.Received<OrderCancelledV2>().Count(m => ids.Contains(m.OrderId))}.");
+        output.WriteLine($"Confirmed, then cancelled: {testBus.Received<OrderConfirmed>().Count(m => ids.Contains(m.OrderId))}; all cancelled: {testBus.Received<OrderCancelledV2>().Count(m => ids.Contains(m.OrderId))}.");
     }
 
     /// <summary>Polls a count in the service's database until it reaches the target.</summary>

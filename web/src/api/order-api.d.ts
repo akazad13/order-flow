@@ -55,9 +55,10 @@ export interface paths {
         put?: never;
         /**
          * Ask to cancel an order
-         * @description Spec 006. A Pending order: the request is recorded and the order service decides
-         *     (202); the outcome is pushed to watchers (spec 005). If the order is confirmed before
-         *     the request is handled, it stays Confirmed. Repeating the request is harmless.
+         * @description Spec 006. A Pending order, or a Confirmed one still within its cancellation window
+         *     (`cancellableUntil`, spec 022): the request is recorded and the order service decides
+         *     (202); the outcome is pushed to watchers (spec 005). A request made in time is honoured
+         *     even if the order is confirmed before it is handled. Repeating the request is harmless.
          *     Staff may cancel any order (spec 015): the reason is StaffRequested (spec 016), and the
          *     detail says the support team cancelled it at the customer's request.
          */
@@ -102,6 +103,14 @@ export interface components {
             cancellation: components["schemas"]["Cancellation"] | null;
             /** Format: date-time */
             placedAt: string;
+            /**
+             * Format: date-time
+             * @description Until when a Confirmed order can still be cancelled (spec 022): its confirmation time plus the
+             *     cancellation window. Null for a Pending order (it can be cancelled at any time) and for a
+             *     Cancelled one. Optional, so readers of the live updates that predate it stay valid; the
+             *     service always sends it.
+             */
+            cancellableUntil?: string | null;
         };
         Cancellation: {
             /** @enum {string} */
@@ -114,7 +123,7 @@ export interface components {
         };
         Problem: {
             type?: string;
-            /** @example The order is already confirmed. */
+            /** @example Too late to cancel. */
             title: string;
             status: number;
             detail?: string;
@@ -257,7 +266,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description The order is already confirmed and cannot be cancelled. */
+            /** @description Too late to cancel; the order was confirmed longer ago than the cancellation window (spec 022). */
             409: {
                 headers: {
                     [name: string]: unknown;

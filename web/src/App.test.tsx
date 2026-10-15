@@ -21,6 +21,7 @@ const pending: Order = {
   placedAt: '2026-10-14T10:00:00Z',
 };
 const confirmed: Order = { ...pending, status: 'Confirmed', total: 37 };
+const inADay = () => new Date(Date.now() + 24 * 3600_000).toISOString();
 
 /** The live connection the App opened (spec 005), driven by the test. */
 type Live = { orderId: string; push: (order: Order) => Promise<void>; joined: () => Promise<void>; unwatch: () => void };
@@ -163,25 +164,39 @@ describe('App', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Cancel order' }));
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Too late to cancel: your order is already confirmed.');
+    expect(await screen.findByRole('status')).toHaveTextContent('Too late to cancel: the time to cancel this order has passed.');
   });
 
-  it('explains when an accepted cancellation lost the race to the payment (spec 006, AC-6, AC-8)', async () => {
+  it('keeps cancelling when the payment wins the race, until the cancellation arrives (spec 022, AC-3)', async () => {
     vi.mocked(clients.cancelOrder).mockResolvedValue({ outcome: 'accepted' });
     const live = await placeAndWatch();
     await userEvent.click(screen.getByRole('button', { name: 'Cancel order' }));
 
-    await live.push(confirmed);
-
+    await live.push({ ...confirmed, cancellableUntil: inADay() });
     expect(screen.getByText('Confirmed')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Too late to cancel: your order is already confirmed.');
+    expect(screen.getByText('Cancelling...')).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+    await live.push({ ...confirmed, status: 'Cancelled', cancellableUntil: null, cancellation: { reason: 'CustomerRequested', detail: "Cancelled at the customer's request." } });
+    expect(screen.getByText('Cancelled')).toBeInTheDocument();
+    expect(screen.queryByText('Cancelling...')).not.toBeInTheDocument();
   });
 
-  it('offers no cancel once the order is final', async () => {
+  it('offers to cancel a confirmed order until its deadline, then not (spec 022, AC-4)', async () => {
+    const live = await placeAndWatch();
+
+    await live.push({ ...confirmed, cancellableUntil: inADay() });
+    expect(screen.getByRole('button', { name: 'Cancel order' })).toBeInTheDocument();
+
+    await live.push({ ...confirmed, cancellableUntil: new Date(Date.now() - 60_000).toISOString() });
+    expect(screen.queryByRole('button', { name: 'Cancel order' })).not.toBeInTheDocument();
+  });
+
+  it('offers no cancel once the order is cancelled', async () => {
     const live = await placeAndWatch();
     expect(screen.getByRole('button', { name: 'Cancel order' })).toBeInTheDocument();
 
-    await live.push(confirmed);
+    await live.push({ ...pending, status: 'Cancelled', cancellation: { reason: 'OutOfStock', detail: 'Only 1 of SKU-001 available, 2 requested.' } });
 
     expect(screen.queryByRole('button', { name: 'Cancel order' })).not.toBeInTheDocument();
   });

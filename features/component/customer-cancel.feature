@@ -1,6 +1,6 @@
-# Spec: specs/006-customer-cancel/spec.md (AC-1, AC-2, AC-3, AC-6)
+# Spec: specs/006-customer-cancel/spec.md (AC-1, AC-2, AC-3, AC-6), specs/022-cancel-confirmed-orders/spec.md (AC-2)
 # Runs in: tests/OrderFlow.Order.ComponentTests (Order service + state machine + in-memory bus)
-@component @spec-006
+@component @spec-006 @spec-022
 Feature: Customer cancels an order (Order service)
   The API records the request; the state machine decides. A Pending order is cancelled,
   a Confirmed one stays Confirmed, and a Cancelled one is left as it is.
@@ -28,11 +28,12 @@ Feature: Customer cancels an order (Order service)
     Then the order is cancelled with reason "CustomerRequested" and detail "Cancelled at the customer's request."
     And no OrderConfirmed is published
 
-  Scenario: Too late once the order is confirmed
+  Scenario: Too late once the order has been confirmed for longer than the window (spec 022)
     When stock is reserved for that order with a total of 37.00
     And payment succeeds for that order
+    And 25 hours pass
     And the customer asks to cancel that order
-    Then the request is refused because the order is already confirmed
+    Then the request is refused as too late
     And the order has status "Confirmed" and a total of 37.00
     And no cancellation request is published
 

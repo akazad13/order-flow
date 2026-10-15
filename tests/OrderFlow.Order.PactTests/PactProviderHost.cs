@@ -94,7 +94,8 @@ internal sealed class ProviderStateStartupFilter : IStartupFilter
         Order? order = request?.Action == "teardown" ? null : request?.State switch
         {
             "a pending order exists" => Placed(),
-            "a confirmed order exists" => Confirmed(),
+            "a confirmed order exists" => Confirmed(DateTimeOffset.UtcNow),
+            "an order confirmed too long ago to cancel exists" => Confirmed(DateTimeOffset.UtcNow.AddDays(-2)), // spec 022
             "an order cancelled for a shortage exists" => CancelledForShortage(),
             _ => null,
         };
@@ -110,11 +111,11 @@ internal sealed class ProviderStateStartupFilter : IStartupFilter
 
     private static Order Placed() => Order.Place("customer-1", [new OrderLine("SKU-001", 2)], TimeProvider.System).Order!;
 
-    private static Order Confirmed()
+    private static Order Confirmed(DateTimeOffset at)
     {
         var order = Placed();
         order.RecordStockHeld(37.00m);
-        order.Confirm();
+        order.Confirm(at, TimeSpan.FromHours(24));
         return order;
     }
 

@@ -77,6 +77,14 @@ When('they cancel the order', async ({ page }) => {
   await order.getByRole('button', { name: 'Cancel order' }).click();
 });
 
+When('they cancel their confirmed order', async ({ page }) => {
+  // Spec 022: still within the cancellation window; the outcome arrives as a push.
+  const order = page.getByRole('region', { name: 'Order' });
+  await expect(order).toContainText('Status: Confirmed', { timeout: EVENTUAL_TIMEOUT_MS });
+  await expect(order).toHaveAttribute('data-watching', 'true');
+  await order.getByRole('button', { name: 'Cancel order' }).click();
+});
+
 When('they order {int} of {string}', async ({ page }, quantity: number, sku: string) => {
   await placeOrder(page, sku, quantity);
 });
