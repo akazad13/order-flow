@@ -23,6 +23,9 @@ public sealed class GatewayOptions
     /// <summary>The shop's own origins, the only ones allowed to open the live connection (AC-5).</summary>
     public string[] AllowedOrigins { get; set; } = ["http://localhost:5180", "http://localhost:5173"];
 
+    /// <summary>How often expired sessions are removed from the store (spec 024). Default one hour.</summary>
+    public TimeSpan SessionCleanupEvery { get; set; } = TimeSpan.FromHours(1);
+
     /// <summary>Send the session cookie over HTTPS only (production, AC-7).</summary>
     public bool SecureCookie { get; set; }
 }

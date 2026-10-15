@@ -62,4 +62,4 @@ None for the services' APIs. The gateway's `/bff` endpoints are the page's own (
 - **Found: the first runs after a stack start failed** (first logins and first calls slow; 2 to 6 scenarios). Two warm-ups now run before the suite: `wait-for-stack.mjs` pushes one order through the services, and Playwright's global setup logs in once through the gateway (a first version of it failed to create its user: my bug). Three cold-start cycles: 11 of 11 each.
 - **Found: a spec 019 smoke test racing Playwright's 30-second test timeout** during a Keycloak restart; that test now has three minutes. Five runs, 7 of 7.
 - **Renewal on every call in development** costs one Keycloak request per call; it makes every E2E scenario exercise the real renewal. Production renews a minute before expiry.
-- **Sessions are not cleaned up** when they expire (rows stay in `sessions`); a cleanup job is a follow-up.
+- **Sessions are not cleaned up** when they expire (rows stay in `sessions`); a cleanup job is a follow-up (done in [spec 024](../024-expired-sessions-cleanup/spec.md)).

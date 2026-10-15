@@ -38,6 +38,18 @@ public sealed class GatewaySteps(GatewayFactory gateway)
     [When("{int} minutes pass")]
     public void WhenMinutesPass(int minutes) => gateway.Clock.Advance(TimeSpan.FromMinutes(minutes));
 
+    [When("{int} hours pass, and the session cleanup runs")]
+    public async Task WhenHoursPassAndTheCleanupRuns(int hours)
+    {
+        _ = Browser; // the gateway, and its cleanup, run from here on
+        var cleanup = gateway.Cleanup.NextCleanup;
+        gateway.Clock.Advance(TimeSpan.FromHours(hours));
+        await cleanup.WaitAsync(TimeSpan.FromSeconds(10));
+    }
+
+    [Then("the gateway holds {int} session(s)")]
+    public void ThenTheGatewayHoldsSessions(int count) => gateway.Sessions.Count.ShouldBe(count);
+
     [When("the page calls the Order API without a session")]
     [When("the page calls the Order API")]
     public async Task WhenThePageCallsTheOrderApi() => _response = await Send(HttpMethod.Get, "/order-api/orders/x", csrf: true);
@@ -54,6 +66,7 @@ public sealed class GatewaySteps(GatewayFactory gateway)
     }
 
     [When("the page asks who is logged in")]
+    [Then("the page asks who is logged in")]
     public async Task WhenThePageAsksWhoIsLoggedIn() => _response = await Browser.GetAsync("/bff/user");
 
     [When("the page asks to log in")]

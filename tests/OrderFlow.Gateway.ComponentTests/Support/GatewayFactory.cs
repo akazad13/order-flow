@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Time.Testing;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -62,6 +63,12 @@ public sealed class GatewayFactory : WebApplicationFactory<Program>
             services.AddSingleton<IStartupFilter>(new TestSignIn(Clock));
         });
     }
+
+    /// <summary>The sessions the gateway holds (in memory in these scenarios; spec 024).</summary>
+    public InMemoryTicketStore Sessions => (InMemoryTicketStore)Services.GetRequiredService<ITicketStore>();
+
+    /// <summary>The background cleanup of expired sessions (spec 024).</summary>
+    public ExpiredSessionsCleanup Cleanup => Services.GetServices<IHostedService>().OfType<ExpiredSessionsCleanup>().Single();
 
     /// <summary>A browser: it keeps cookies and does not follow redirects.</summary>
     public HttpClient Browser() => CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true, AllowAutoRedirect = false });

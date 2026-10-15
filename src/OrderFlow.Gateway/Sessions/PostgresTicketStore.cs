@@ -10,7 +10,7 @@ namespace OrderFlow.Gateway.Sessions;
 /// stays here, so any copy of the gateway serves any session. The ticket is protected like the cookie
 /// would be (the data protection keys are shared through the same database).
 /// </summary>
-public sealed class PostgresTicketStore(IServiceScopeFactory scopes, TimeProvider clock) : ITicketStore
+public sealed class PostgresTicketStore(IServiceScopeFactory scopes, TimeProvider clock) : ITicketStore, IExpiredSessions
 {
     public async Task<string> StoreAsync(AuthenticationTicket ticket)
     {
@@ -54,6 +54,13 @@ public sealed class PostgresTicketStore(IServiceScopeFactory scopes, TimeProvide
     }
 
     public Task RemoveAsync(string key) => WithDb(db => db.Sessions.Where(s => s.Key == key).ExecuteDeleteAsync());
+
+    public async Task<int> RemoveExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var removed = 0;
+        await WithDb(async db => removed = await db.Sessions.Where(s => s.ExpiresAt <= now).ExecuteDeleteAsync(cancellationToken));
+        return removed;
+    }
 
     private static byte[] Serialize(AuthenticationTicket ticket) => TicketSerializer.Default.Serialize(ticket);
 

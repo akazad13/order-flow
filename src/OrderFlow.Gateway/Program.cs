@@ -33,12 +33,16 @@ if (usePostgres)
 {
     builder.Services.AddDbContext<GatewayDbContext>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("Gateway")));
     builder.Services.AddDataProtection().SetApplicationName("orderflow-gateway").PersistKeysToDbContext<GatewayDbContext>();
-    builder.Services.AddSingleton<ITicketStore, PostgresTicketStore>();
+    builder.Services.AddSingleton<PostgresTicketStore>();
+    builder.Services.AddSingleton<ITicketStore>(sp => sp.GetRequiredService<PostgresTicketStore>());
+    builder.Services.AddSingleton<IExpiredSessions>(sp => sp.GetRequiredService<PostgresTicketStore>());
 }
 else
 {
     builder.Services.AddDataProtection().SetApplicationName("orderflow-gateway");
-    builder.Services.AddSingleton<ITicketStore, InMemoryTicketStore>();
+    builder.Services.AddSingleton<InMemoryTicketStore>();
+    builder.Services.AddSingleton<ITicketStore>(sp => sp.GetRequiredService<InMemoryTicketStore>());
+    builder.Services.AddSingleton<IExpiredSessions>(sp => sp.GetRequiredService<InMemoryTicketStore>());
 }
 
 var cookiePolicy = gateway.SecureCookie ? CookieSecurePolicy.Always : CookieSecurePolicy.SameAsRequest;
@@ -105,6 +109,9 @@ builder.Services
 
 builder.Services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
     .Configure<ITicketStore>((options, store) => options.SessionStore = store);
+
+// Spec 024: expired sessions are removed every Gateway:SessionCleanupEvery, by every copy.
+builder.Services.AddHostedService<ExpiredSessionsCleanup>();
 
 builder.Services.AddHttpClient(TokenRefresher.HttpClientName);
 builder.Services.AddSingleton<TokenRefresher>();

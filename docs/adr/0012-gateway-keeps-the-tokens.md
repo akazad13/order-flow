@@ -20,6 +20,6 @@ Since spec 012 the web page logged in with Keycloak itself (`oidc-client-ts`) an
 ## Consequences
 
 - No script on the page can read or leak a token; a stolen cookie works only from the shop's own pages (SameSite, `X-CSRF`) and only until the session ends.
-- One more service on the path of every call, and a database table of sessions (expired ones are not yet cleaned up).
+- One more service on the path of every call, and a database table of sessions (expired ones are removed every hour since [spec 024](../../specs/024-expired-sessions-cleanup/spec.md)).
 - Logging out ends the session at the gateway and at Keycloak; Keycloak can end a session too, and the gateway notices at the next renewal.
 - The services and their contracts do not change; the Pact contract still describes what the Order API receives, token included.

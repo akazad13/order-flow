@@ -17,6 +17,7 @@
   <ItemGroup>
     <!-- Feature files live with the specs at the repo root, not in the test project. -->
     <ReqnrollFeatureFiles Include="..\..\features\component\gateway.feature" Link="Features\gateway.feature" />
+    <ReqnrollFeatureFiles Include="..\..\features\component\gateway-session-cleanup.feature" Link="Features\gateway-session-cleanup.feature" />
   </ItemGroup>
 
   <ItemGroup>
