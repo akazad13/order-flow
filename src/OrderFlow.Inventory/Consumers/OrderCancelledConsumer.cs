@@ -8,12 +8,10 @@ namespace OrderFlow.Inventory.Consumers;
 /// Puts held stock back on sale (spec 003, AC-3). An order cancelled for a shortage held
 /// nothing, and a repeated cancellation finds nothing left, so both are no-ops (R-1, R-2).
 /// An order cancelled before its placement arrived is remembered as released (spec 006, AC-4).
-/// Reads both versions of the event: v1 until it is retired (spec 016, ADR 0010).
+/// Reads v2 of the event (spec 016); v1 was retired in spec 018.
 /// </summary>
-public sealed class OrderCancelledConsumer(ICatalogStore catalog, TimeProvider clock) : IConsumer<OrderCancelledV2>, IConsumer<OrderCancelled>
+public sealed class OrderCancelledConsumer(ICatalogStore catalog, TimeProvider clock) : IConsumer<OrderCancelledV2>
 {
-    public Task Consume(ConsumeContext<OrderCancelled> context) => Handle(context, context.Message.ToV2());
-
     public Task Consume(ConsumeContext<OrderCancelledV2> context) => Handle(context, context.Message);
 
     private async Task Handle(ConsumeContext context, OrderCancelledV2 order)

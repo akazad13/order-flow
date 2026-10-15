@@ -223,9 +223,6 @@ public sealed class OrderLifecycleSteps(OrderServiceFactory service)
 
         cancelled.Reason.ShouldBe(reason);
         cancelled.CustomerId.ShouldBe(_placed!.CustomerId);
-
-        // Spec 016, AC-2 and R-2: the current version only, never both.
-        (await service.Harness.Published.Any<OrderCancelled>()).ShouldBeFalse("v1 is no longer published");
     }
 
     private static decimal Money(string value) => decimal.Parse(value, CultureInfo.InvariantCulture);

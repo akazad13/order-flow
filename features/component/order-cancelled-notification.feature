@@ -1,4 +1,4 @@
-# Spec: specs/002-stock-rejection/spec.md (AC-4), specs/003-payment-failure/spec.md (AC-4), specs/006-customer-cancel/spec.md (AC-7, Q3), specs/016-event-versions/spec.md (AC-1, AC-3, AC-4)
+# Spec: specs/002-stock-rejection/spec.md (AC-4), specs/003-payment-failure/spec.md (AC-4), specs/006-customer-cancel/spec.md (AC-7, Q3), specs/016-event-versions/spec.md (AC-1, AC-3)
 # Runs in: tests/OrderFlow.Notification.ComponentTests (Notification service + in-memory bus)
 @component @spec-002 @spec-003 @spec-006 @spec-016
 Feature: Order cancelled notification (Notification service)
@@ -15,7 +15,3 @@ Feature: Order cancelled notification (Notification service)
       | CustomerRequested | Your order was cancelled at your request            |
       | StaffRequested    | Your order was cancelled by our support team at your request |
       | SomeFutureReason  | Your order was cancelled                            |
-
-  Scenario: A cancellation published as the old version (v1) is still told
-    When an OrderCancelled v1 event with reason "CustomerRequested" arrives for customer "customer-4"
-    Then the inbox of "customer-4" contains "Your order was cancelled at your request"

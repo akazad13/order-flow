@@ -7,12 +7,10 @@ namespace OrderFlow.Payment.Consumers;
 /// <summary>
 /// No money is kept for a cancelled order (spec 006, AC-5), whatever arrived first: a charge
 /// already taken is refunded once; a payment not decided yet is voided and never taken.
-/// Reads both versions of the event: v1 until it is retired (spec 016, ADR 0010).
+/// Reads v2 of the event (spec 016); v1 was retired in spec 018.
 /// </summary>
-public sealed class OrderCancelledConsumer(IPaymentLedger ledger) : IConsumer<OrderCancelledV2>, IConsumer<OrderCancelled>
+public sealed class OrderCancelledConsumer(IPaymentLedger ledger) : IConsumer<OrderCancelledV2>
 {
-    public Task Consume(ConsumeContext<OrderCancelled> context) => Handle(context, context.Message.ToV2());
-
     public Task Consume(ConsumeContext<OrderCancelledV2> context) => Handle(context, context.Message);
 
     private async Task Handle(ConsumeContext context, OrderCancelledV2 order)

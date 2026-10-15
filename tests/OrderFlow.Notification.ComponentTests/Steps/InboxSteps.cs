@@ -52,17 +52,6 @@ public sealed class InboxSteps(NotificationServiceFactory service)
         await Eventually.True(() => consumer.Consumed.Select<OrderCancelledV2>(m => m.Context.Message.OrderId == _orderId).Any(), "OrderCancelled v2 (Consumed)");
     }
 
-    [When("an OrderCancelled v1 event with reason {string} arrives for customer {string}")]
-    public async Task WhenAnOrderCancelledV1EventArrives(string reason, string customerId)
-    {
-        // The old version, still on the broker during a deploy (spec 016, AC-4).
-        _ = service.CreateClient();
-        await service.Harness.Bus.Publish(new OrderCancelled(_orderId, customerId, reason, "detail", DateTimeOffset.UtcNow));
-
-        var consumer = service.Harness.GetConsumerHarness<OrderCancelledConsumer>();
-        await Eventually.True(() => consumer.Consumed.Select<OrderCancelled>(m => m.Context.Message.OrderId == _orderId).Any(), "OrderCancelled v1 (Consumed)");
-    }
-
     [When(@"^a PaymentRefunded event of (\d+\.\d{2}) arrives for customer ""([^""]+)""$")]
     public async Task WhenAPaymentRefundedEventArrives(string amount, string customerId)
     {

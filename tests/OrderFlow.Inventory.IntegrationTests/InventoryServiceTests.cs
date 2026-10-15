@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using MassTransit;
 using MassTransit.EntityFrameworkCoreIntegration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,7 +42,7 @@ public sealed class InventoryServiceTests(InfrastructureFixture infrastructure)
         var restarted = await after.StartAsync();
         (await Available(restarted, "ITEM-1")).ShouldBe(7);
 
-        await testBus.Publish(new OrderCancelled(orderId, "customer-1", CancellationReasons.PaymentDeclined, "Card declined", DateTimeOffset.UtcNow));
+        await testBus.Publish(new OrderCancelledV2(orderId, "customer-1", CancellationReasons.PaymentDeclined, "Card declined", DateTimeOffset.UtcNow));
         var released = await testBus.WaitFor<StockReleased>(m => m.OrderId == orderId);
 
         released.Lines.ShouldBe([new StockReleasedLine("ITEM-1", 3)]);
@@ -103,7 +104,7 @@ public sealed class InventoryServiceTests(InfrastructureFixture infrastructure)
         var ids = Enumerable.Range(0, 10).Select(_ => Guid.NewGuid()).ToList();
         await Task.WhenAll(ids.SelectMany(id => new[]
         {
-            testBus.Publish(new OrderCancelled(id, "customer-1", CancellationReasons.CustomerRequested, "Cancelled at the customer's request.", DateTimeOffset.UtcNow)),
+            testBus.Publish(new OrderCancelledV2(id, "customer-1", CancellationReasons.CustomerRequested, "Cancelled at the customer's request.", DateTimeOffset.UtcNow)),
             testBus.Publish(new OrderPlaced(id, "customer-1", [new OrderPlacedLine("ITEM-4", 1)], DateTimeOffset.UtcNow)),
         }));
 
@@ -138,6 +139,41 @@ public sealed class InventoryServiceTests(InfrastructureFixture infrastructure)
 
             DateTime.UtcNow.ShouldBeLessThan(deadline, $"the service did not finish {messages} messages");
             await Task.Delay(50);
+        }
+    }
+
+    [Fact]
+    public async Task A_stray_v1_cancellation_is_set_aside_not_lost()
+    {
+        // Spec 018, AC-5 and R-1: on a broker that ran v1, Inventory's queue is still bound to the
+        // v1 exchange. Set it up as a v1 reader left it, then start Inventory as it is now.
+        var settings = await SettingsAsync();
+        var vhost = settings["RabbitMq:VirtualHost"]!;
+        var v1Reader = infrastructure.CreateBus(vhost, cfg =>
+            cfg.ReceiveEndpoint("inventory-order-cancelled", e => e.Handler<RetiredOrderCancelled>(_ => Task.CompletedTask)));
+        await v1Reader.StartAsync();
+        await v1Reader.StopAsync();
+
+        await using var host = new ServiceHost<Program>(settings);
+        await host.StartAsync();
+
+        var publisher = infrastructure.CreateBus(vhost, _ => { });
+        await publisher.StartAsync();
+        try
+        {
+            await publisher.Publish(new RetiredOrderCancelled(Guid.NewGuid(), "customer-1", "CustomerRequested", "Cancelled at the customer's request.", DateTimeOffset.UtcNow));
+        }
+        finally
+        {
+            await publisher.StopAsync();
+        }
+
+        // Set aside where the error-queue check sees it (spec 009, AC-6), not consumed and not dropped.
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while (await infrastructure.QueueDepthAsync(vhost, "inventory-order-cancelled_skipped") != 1)
+        {
+            DateTime.UtcNow.ShouldBeLessThan(deadline, "the stray v1 never reached inventory-order-cancelled_skipped");
+            await Task.Delay(200);
         }
     }
 
@@ -183,3 +219,11 @@ public sealed class InventoryServiceTests(InfrastructureFixture infrastructure)
         }
     }
 }
+
+/// <summary>
+/// OrderCancelled v1 as it was on the wire (spec 016) before it was retired (spec 018): only for
+/// publishing a stray one in a test. Not the services' type.
+/// </summary>
+[EntityName("order-cancelled")]
+[MessageUrn("orderflow:order-cancelled:v1", useDefaultPrefix: false)]
+public sealed record RetiredOrderCancelled(Guid OrderId, string CustomerId, string Reason, string Detail, DateTimeOffset CancelledAt);

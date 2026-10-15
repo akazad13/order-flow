@@ -46,8 +46,7 @@ public sealed class OrderUpdatesConsumer(IOrderRepository orders, IHubContext<Or
 {
     public Task Consume(ConsumeContext<OrderConfirmed> context) => Push(context.Message.OrderId, context.CancellationToken);
 
-    // Only v2 (spec 016): a push is a notice, not a record (spec 013, R-2), so a v1 still on its way
-    // from a copy running the old code during a deploy can be missed; the page reads the order again.
+    // Spec 016: the current version of the event (v1 retired, spec 018).
     public Task Consume(ConsumeContext<OrderCancelledV2> context) => Push(context.Message.OrderId, context.CancellationToken);
 
     private async Task Push(Guid orderId, CancellationToken cancellationToken)

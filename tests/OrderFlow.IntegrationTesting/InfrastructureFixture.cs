@@ -1,5 +1,7 @@
 using System.Data.Common;
 using System.Globalization;
+using System.Text.Json;
+using MassTransit;
 using System.Net;
 using System.Net.Sockets;
 using Testcontainers.PostgreSql;
@@ -71,6 +73,38 @@ public sealed class InfrastructureFixture : IAsyncLifetime
     };
 
     internal (string User, string Password) RabbitCredentials => (RabbitUser, RabbitPassword);
+
+    /// <summary>A bare bus on the broker, for setting up topology the services under test would not (spec 018).</summary>
+    public IBusControl CreateBus(string vhost, Action<IRabbitMqBusFactoryConfigurator> configure) =>
+        Bus.Factory.CreateUsingRabbitMq(cfg =>
+        {
+            cfg.Host("localhost", RabbitPort, vhost, h =>
+            {
+                h.Username(RabbitUser);
+                h.Password(RabbitPassword);
+            });
+            configure(cfg);
+        });
+
+    /// <summary>Messages in a queue right now (rabbitmqctl's live count); null if there is no such queue.</summary>
+    public async Task<int?> QueueDepthAsync(string vhost, string queue)
+    {
+        var result = await Rabbit.ExecAsync(["rabbitmqctl", "list_queues", "-p", vhost, "name", "messages", "--formatter", "json"]);
+        if (result.ExitCode != 0)
+        {
+            throw new InvalidOperationException($"rabbitmqctl list_queues failed: {result.Stderr}");
+        }
+
+        foreach (var row in JsonDocument.Parse(result.Stdout).RootElement.EnumerateArray())
+        {
+            if (row.GetProperty("name").GetString() == queue)
+            {
+                return row.GetProperty("messages").GetInt32();
+            }
+        }
+
+        return null;
+    }
 
     private async Task RabbitCtl(params string[] args)
     {

@@ -37,7 +37,6 @@ public sealed class TestBus : IAsyncDisposable
                 Observe<PaymentSucceeded>(e);
                 Observe<PaymentFailed>(e);
                 Observe<OrderConfirmed>(e);
-                Observe<OrderCancelled>(e);
                 Observe<OrderCancelledV2>(e);
                 Observe<OrderCancellationRequested>(e);
                 Observe<PaymentRefunded>(e);

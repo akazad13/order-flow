@@ -48,7 +48,7 @@ public sealed class PaymentServiceTests(InfrastructureFixture infrastructure)
         await using (var before = new ServiceHost<Program>(settings))
         {
             await before.StartAsync();
-            var cancelled = Handled<OrderCancelled>(before, m => m.OrderId == orderId);
+            var cancelled = Handled<OrderCancelledV2>(before, m => m.OrderId == orderId);
             await testBus.Publish(CancelledAtCustomerRequest(orderId));
             await cancelled.WaitFor(1);
         }
@@ -88,7 +88,7 @@ public sealed class PaymentServiceTests(InfrastructureFixture infrastructure)
 
         await using var third = new ServiceHost<Program>(settings);
         await third.StartAsync();
-        var handled = Handled<OrderCancelled>(third, m => m.OrderId == reserved.OrderId);
+        var handled = Handled<OrderCancelledV2>(third, m => m.OrderId == reserved.OrderId);
         await testBus.Publish(CancelledAtCustomerRequest(reserved.OrderId));
         await handled.WaitFor(1);
         await Settle(testBus);
@@ -116,7 +116,7 @@ public sealed class PaymentServiceTests(InfrastructureFixture infrastructure)
         await Task.WhenAll(orders.SelectMany(o => Enumerable.Range(0, copies).Select(_ => testBus.Publish(o))));
         await charged.WaitFor(orders.Count * copies);
 
-        var cancelled = Handled<OrderCancelled>(host, m => ids.Contains(m.OrderId));
+        var cancelled = Handled<OrderCancelledV2>(host, m => ids.Contains(m.OrderId));
         await Task.WhenAll(orders.SelectMany(o => Enumerable.Range(0, copies).Select(_ => testBus.Publish(CancelledAtCustomerRequest(o.OrderId)))));
         await cancelled.WaitFor(orders.Count * copies);
         await Settle(testBus);
@@ -145,7 +145,7 @@ public sealed class PaymentServiceTests(InfrastructureFixture infrastructure)
     private static StockReserved StockReservedFor(Guid orderId, decimal total) =>
         new(orderId, "customer-1", [new StockReservedLine("ITEM-1", 1, total)], total, DateTimeOffset.UtcNow);
 
-    private static OrderCancelled CancelledAtCustomerRequest(Guid orderId) =>
+    private static OrderCancelledV2 CancelledAtCustomerRequest(Guid orderId) =>
         new(orderId, "customer-1", CancellationReasons.CustomerRequested, "Cancelled at the customer's request.", DateTimeOffset.UtcNow);
 
     private async Task<Dictionary<string, string?>> SettingsAsync()

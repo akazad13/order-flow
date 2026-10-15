@@ -28,9 +28,6 @@ public sealed class SettlePaymentSteps(PaymentServiceFactory service, TakePaymen
     [When("that order is cancelled at the customer's request")]
     public Task WhenThatOrderIsCancelledByTheCustomer() => Cancel(CancellationReasons.CustomerRequested, times: 1);
 
-    [When("that order is cancelled at the customer's request, with the old version of the event \\(v1\\)")]
-    public Task WhenThatOrderIsCancelledWithV1() => Cancel(CancellationReasons.CustomerRequested, times: 1, oldVersion: true);
-
     [When("that order is cancelled at the customer's request twice")]
     public Task WhenThatOrderIsCancelledByTheCustomerTwice() => Cancel(CancellationReasons.CustomerRequested, times: 2);
 
@@ -65,22 +62,19 @@ public sealed class SettlePaymentSteps(PaymentServiceFactory service, TakePaymen
     private IEnumerable<PaymentRefunded> Refunds() =>
         service.Harness.Published.Select<PaymentRefunded>(m => m.Context.Message.OrderId == payment.OrderId).Select(m => m.Context.Message);
 
-    /// <summary>Publishes the current version (v2, spec 016), or the old one (v1) still on the broker during a deploy.</summary>
-    private async Task Cancel(string reason, int times, bool oldVersion = false)
+    private async Task Cancel(string reason, int times)
     {
         _ = service.CreateClient();
-        var cancelled = new OrderCancelled(payment.OrderId, "customer-1", reason, "detail", DateTimeOffset.UtcNow);
         for (var i = 0; i < times; i++)
         {
             // Real repeats: same content, new message IDs.
-            await (oldVersion ? service.Harness.Bus.Publish(cancelled) : service.Harness.Bus.Publish(cancelled.ToV2()));
+            await service.Harness.Bus.Publish(new OrderCancelledV2(payment.OrderId, "customer-1", reason, "detail", DateTimeOffset.UtcNow));
         }
 
         _cancellationsSent += times;
         var consumer = service.Harness.GetConsumerHarness<OrderCancelledConsumer>();
         await Eventually.True(
-            () => consumer.Consumed.Select<OrderCancelledV2>(m => m.Context.Message.OrderId == payment.OrderId).Count()
-                + consumer.Consumed.Select<OrderCancelled>(m => m.Context.Message.OrderId == payment.OrderId).Count() >= _cancellationsSent,
+            () => consumer.Consumed.Select<OrderCancelledV2>(m => m.Context.Message.OrderId == payment.OrderId).Count() >= _cancellationsSent,
             $"{_cancellationsSent} OrderCancelled consumed");
     }
 

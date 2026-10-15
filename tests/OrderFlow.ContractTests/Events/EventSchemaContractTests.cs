@@ -34,24 +34,20 @@ public class EventSchemaContractTests
         },
         { "payment-failed.v1.json", new PaymentFailed(Guid.NewGuid(), "Card declined", DateTimeOffset.UtcNow) },
         {
-            "order-cancelled.v1.json",
-            new OrderCancelled(Guid.NewGuid(), "customer-1", CancellationReasons.OutOfStock, "Only 1 of SKU-002 available, 3 requested.", DateTimeOffset.UtcNow)
-        },
-        {
-            "order-cancelled.v1.json",
-            new OrderCancelled(Guid.NewGuid(), "customer-1", CancellationReasons.PaymentDeclined, "Card declined", DateTimeOffset.UtcNow)
-        },
-        {
-            "order-cancelled.v1.json",
-            new OrderCancelled(Guid.NewGuid(), "customer-1", CancellationReasons.CustomerRequested, "Cancelled at the customer's request.", DateTimeOffset.UtcNow)
-        },
-        {
             "order-cancelled.v2.json",
             new OrderCancelledV2(Guid.NewGuid(), "customer-1", CancellationReasons.StaffRequested, "Cancelled by our support team at the customer's request.", DateTimeOffset.UtcNow)
         },
         {
             "order-cancelled.v2.json",
-            new OrderCancelled(Guid.NewGuid(), "customer-1", CancellationReasons.OutOfStock, "Only 1 of SKU-002 available, 3 requested.", DateTimeOffset.UtcNow).ToV2()
+            new OrderCancelledV2(Guid.NewGuid(), "customer-1", CancellationReasons.OutOfStock, "Only 1 of SKU-002 available, 3 requested.", DateTimeOffset.UtcNow)
+        },
+        {
+            "order-cancelled.v2.json",
+            new OrderCancelledV2(Guid.NewGuid(), "customer-1", CancellationReasons.PaymentDeclined, "Card declined", DateTimeOffset.UtcNow)
+        },
+        {
+            "order-cancelled.v2.json",
+            new OrderCancelledV2(Guid.NewGuid(), "customer-1", CancellationReasons.CustomerRequested, "Cancelled at the customer's request.", DateTimeOffset.UtcNow)
         },
         { "stock-released.v1.json", new StockReleased(Guid.NewGuid(), [new StockReleasedLine("SKU-001", 3)], DateTimeOffset.UtcNow) },
         { "order-cancellation-requested.v1.json", new OrderCancellationRequested(Guid.NewGuid(), DateTimeOffset.UtcNow) },

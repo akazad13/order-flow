@@ -38,3 +38,4 @@ The gate enforces step 1 before step 2: while `publishNameVN` exists, every `<se
 - When all services are deployed together (compose, CI), steps 1 and 2 can ship in one release, because every reader is listening before anything is published. Deployed piecemeal, they are separate releases.
 - Live notices (spec 013, R-2) need not read the old version: a missed push is recovered by reading the order again.
 - Retiring is a release of its own, with a condition someone must check; until then each reader carries a few lines for the old version.
+- Retiring removes the reading, not the routing (spec 018): existing brokers keep the old exchange's bindings, so a stray old message lands in a reader's skipped queue, which the error-queue check reports, instead of being dropped. `OrderCancelled` v1 was retired this way in spec 018.
