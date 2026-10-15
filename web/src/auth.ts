@@ -1,93 +1,42 @@
-import { UserManager, WebStorageStateStore, type User } from 'oidc-client-ts';
-
 /**
- * Customer login (spec 012, ADR 0008): Keycloak, authorization code flow with PKCE.
- * The customer is the token's subject; the API never takes a customer ID from the page.
- * Staff carry the realm role `staff` (spec 015), admins the role `admin` (spec 017). The access token renews itself with the refresh
- * token a minute before it expires (spec 015, Q4); if it cannot, the login ends.
+ * The login (specs 012, 015, 017; spec 023 since): the gateway logs the customer in with Keycloak and
+ * keeps the tokens on the server. The page holds no token at all, only a session cookie its scripts
+ * cannot read; it asks the gateway who is logged in, and sends `X-CSRF: 1` on every call it makes.
  */
 export type Customer = { id: string; name: string; isStaff: boolean; isAdmin: boolean };
 
-const authority = import.meta.env.VITE_AUTH_AUTHORITY ?? 'http://localhost:8180/realms/orderflow';
+/** The header the gateway requires on calls from the page (spec 023, AC-5). */
+export const CSRF_HEADER = { 'X-CSRF': '1' } as const;
 
-let token: string | null = null;
 const listeners = new Set<(customer: Customer | null) => void>();
 
-function toCustomer(user: User | null): Customer | null {
-  if (!user || user.expired) {
-    token = null;
-    return null;
-  }
-  token = user.access_token;
-  const roles = user.profile.roles;
-  return {
-    id: user.profile.sub,
-    name: user.profile.preferred_username ?? user.profile.sub,
-    isStaff: Array.isArray(roles) && roles.includes('staff'),
-    isAdmin: Array.isArray(roles) && roles.includes('admin'), // spec 017
-  };
-}
-
-function changed(customer: Customer | null) {
-  for (const listener of listeners) listener(customer);
-}
-
-/** The login is over (the token expired unrenewed, or the session ended at Keycloak): forget it. */
-async function endLogin() {
-  token = null;
-  await manager().removeUser();
-  changed(null);
-}
-
-// Created on first use: modules that only need accessToken() (e.g. the Pact test, in Node) never touch the browser.
-let userManager: UserManager | undefined;
-function manager(): UserManager {
-  if (!userManager) {
-    userManager = new UserManager({
-      authority,
-      client_id: 'orderflow-web',
-      redirect_uri: `${window.location.origin}/`,
-      post_logout_redirect_uri: `${window.location.origin}/`,
-      response_type: 'code',
-      scope: 'openid profile',
-      userStore: new WebStorageStateStore({ store: window.sessionStorage }),
-      automaticSilentRenew: true,
-    });
-    // A renewed token replaces the old one for every later call and (re)connection.
-    userManager.events.addUserLoaded((user) => changed(toCustomer(user)));
-    userManager.events.addSilentRenewError(() => void endLogin());
-    userManager.events.addAccessTokenExpired(() => void endLogin());
-  }
-  return userManager;
-}
-
-/** The logged-in customer, finishing a login if the page is the return from Keycloak. */
+/** The logged-in customer, or null: the gateway answers 401 without a session. */
 export async function currentCustomer(): Promise<Customer | null> {
-  const params = new URLSearchParams(window.location.search);
-  if (params.has('code') && params.has('state')) {
-    const user = await manager().signinRedirectCallback();
-    window.history.replaceState({}, document.title, window.location.pathname);
-    return toCustomer(user);
-  }
-  return toCustomer(await manager().getUser());
+  const response = await fetch('/bff/user', { headers: CSRF_HEADER });
+  if (response.status === 401) return null;
+  if (!response.ok) throw new Error(`Could not read the login (${response.status}).`);
+  return (await response.json()) as Customer;
 }
 
-/** Calls the listener whenever the login changes on its own: renewed, or ended. Returns an unsubscribe function. */
+/** Calls the listener when the login ends on its own (the gateway could not renew it). Returns an unsubscribe function. */
 export function onLoginChanged(listener: (customer: Customer | null) => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
 
-export function logIn(): Promise<void> {
-  return manager().signinRedirect();
+/** The gateway answered 401 to a call: the session is over (spec 023, AC-4); the page asks to log in. */
+export function loginEnded(): void {
+  for (const listener of listeners) listener(null);
 }
 
-export function logOut(): Promise<void> {
-  token = null;
-  return manager().signoutRedirect();
+/** Keycloak's login page, through the gateway; back to this page afterwards. */
+export function logIn(): void {
+  window.location.assign(`/bff/login?returnUrl=${encodeURIComponent(window.location.pathname)}`);
 }
 
-/** The access token for API calls and the hub; null when nobody is logged in. */
-export function accessToken(): string | null {
-  return token;
+/** Ends the session at the gateway, then at Keycloak. */
+export async function logOut(): Promise<void> {
+  const response = await fetch('/bff/logout', { method: 'POST', headers: CSRF_HEADER });
+  const { logoutUrl } = response.ok ? ((await response.json()) as { logoutUrl?: string }) : {};
+  window.location.assign(logoutUrl ?? '/');
 }

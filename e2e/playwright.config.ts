@@ -10,6 +10,8 @@ const testDir = defineBddConfig({
 
 export default defineConfig({
   testDir,
+  // One real login before the suite: right after a start, the first ones are slow (spec 023).
+  globalSetup: './scripts/warm-up.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   // No retries: a flaky test is a bug to fix, not to hide (proposal: 20 green runs in a row).

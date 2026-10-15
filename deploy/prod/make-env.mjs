@@ -21,6 +21,7 @@ writeFileSync(
     'KEYCLOAK_ADMIN=orderflow-admin',
     `KEYCLOAK_ADMIN_PASSWORD=${secret()}`,
     `KEYCLOAK_DB_PASSWORD=${secret()}`,
+    `ORDERFLOW_GATEWAY_SECRET=${secret()}`, // spec 023
     '',
   ].join('\n'),
   { mode: 0o600 },

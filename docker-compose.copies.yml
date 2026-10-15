@@ -2,7 +2,7 @@
 #   docker compose -f docker-compose.yml -f docker-compose.copies.yml up -d --build
 # Each second copy answers to its service's name as well as its own, so the web server
 # spreads requests across both copies; RabbitMQ shares each queue between them. The second
-# copies' own ports (5111 to 5114) are for waiting on them and for debugging.
+# copies' own ports (5111 to 5115) are for waiting on them and for debugging.
 
 services:
   order-2:
@@ -25,5 +25,10 @@ services:
     ports: !override ["5114:8080"]
     networks: { default: { aliases: [notification] } }
 
+  gateway-2:
+    extends: { file: docker-compose.yml, service: gateway }
+    ports: !override ["5115:8080"]
+    networks: { default: { aliases: [gateway] } }
+
   web:
-    depends_on: [order-2, notification-2]
+    depends_on: [gateway-2, order-2, notification-2]

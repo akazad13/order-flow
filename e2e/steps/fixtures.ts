@@ -14,8 +14,6 @@ type Scenario = {
   orderReads: string[];
   /** Text frames the page received on the order hub's WebSocket. */
   hubFrames: string[];
-  /** The access token right after logging in (spec 015: renewed later). */
-  firstToken?: string;
 };
 
 /** Someone who can log in through Keycloak's page. */
@@ -112,12 +110,4 @@ export async function logIn(page: Page, user: Credentials): Promise<void> {
   await page.getByLabel('Password', { exact: true }).fill(user.password);
   await page.getByRole('button', { name: 'Sign In' }).click();
   await expect(page.getByText(`Logged in as ${user.username}`)).toBeVisible();
-}
-
-/** The access token oidc-client-ts keeps for the page (session storage). */
-export function storedToken(page: Page): Promise<string | null> {
-  return page.evaluate(() => {
-    const key = Object.keys(sessionStorage).find((k) => k.startsWith('oidc.user:'));
-    return key ? (JSON.parse(sessionStorage.getItem(key)!).access_token as string) : null;
-  });
 }

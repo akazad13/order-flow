@@ -92,14 +92,20 @@ test('The production realm has no demo users and no test client (AC-1)', async (
   }
   expect(await admin.get('/clients?clientId=orderflow-e2e')).toEqual([]);
 
-  // The web client's address came from the environment on import (Q2).
-  const [web] = await admin.get('/clients?clientId=orderflow-web');
-  expect(web.redirectUris).toEqual(['https://localhost:5443/*']);
+  // The gateway is the only client (spec 023); its address and secret came from the environment on import (Q2).
+  const clients = (await admin.get('/clients')) as { clientId: string; id: string; redirectUris?: string[] }[];
+  const gateway = clients.find((c) => c.clientId === 'orderflow-gateway');
+  expect(gateway?.redirectUris).toEqual(['https://localhost:5443/bff/signin-oidc']);
+  expect(clients.map((c) => c.clientId)).not.toContain('orderflow-web');
+  expect((await admin.get(`/clients/${gateway!.id}/client-secret`)).value).toBe(secrets.ORDERFLOW_GATEWAY_SECRET);
 });
 
 test('Nothing test-only is switched on (AC-6; checked through the shop and from inside, spec 021 AC-3)', async ({ request }) => {
   expect(fromInside('PUT', 'payment', '/test/stalls/someone')).toMatch(/^HTTP\/1\.1 404/);
-  expect((await request.put('/inventory-api/stock/SKU-001', { data: { name: 'x', unitPrice: 1, available: 1 } })).status()).toBe(401);
+  // Through the gateway, as the page would call (spec 023: with X-CSRF), but without a session: 401.
+  expect((await request.put('/inventory-api/stock/SKU-001', { headers: { 'X-CSRF': '1' }, data: { name: 'x', unitPrice: 1, available: 1 } })).status()).toBe(401);
+  // Without the page's header, refused before anything else (spec 023, AC-5).
+  expect((await request.put('/inventory-api/stock/SKU-001', { data: { name: 'x', unitPrice: 1, available: 1 } })).status()).toBe(403);
 });
 
 test('A customer logs in through the real page over HTTPS and an order is confirmed (AC-5)', async ({ page, request }) => {
@@ -131,12 +137,21 @@ test('A customer logs in through the real page over HTTPS and an order is confir
     await page.getByLabel('Quantity').fill('1');
     await page.getByRole('button', { name: 'Place order' }).click();
     await expect(page.getByRole('region', { name: 'Order' })).toContainText('Status: Confirmed', { timeout: 20_000 });
+
+    // Spec 023, AC-1 and AC-7: no token reachable by the page; the session cookie is Secure and HttpOnly.
+    const visible = await page.evaluate(() => [...Object.values({ ...sessionStorage }), ...Object.values({ ...localStorage }), document.cookie].join(' '));
+    expect(visible).not.toContain('eyJ');
+    const session = (await page.context().cookies()).find((c) => c.name === 'orderflow.session');
+    expect(session?.secure).toBe(true);
+    expect(session?.httpOnly).toBe(true);
   } finally {
     await admin.delete(`/users/${userId}`);
   }
 });
 
 test('Keycloak keeps its realm and users in its own PostgreSQL, across a restart (AC-2)', async ({ request }) => {
+  // A restart takes Keycloak 25 to 30 seconds, about Playwright's default for a whole test (spec 023 found it).
+  test.setTimeout(180_000);
   const realms = execFileSync('docker', ['exec', container('keycloak-db'), 'psql', '-U', 'keycloak', '-d', 'keycloak', '-tAc', "select count(*) from realm where name = 'orderflow'"], { encoding: 'utf8' });
   expect(realms.trim()).toBe('1');
 

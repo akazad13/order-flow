@@ -14,7 +14,8 @@ import { fileURLToPath } from 'node:url';
 export const PROD_REALM = 'deploy/keycloak/orderflow-realm.json';
 export const DEV_OVERLAY = 'deploy/keycloak/dev-overlay.json';
 export const DEV_REALM = 'deploy/keycloak/dev/orderflow-realm.json';
-export const WEB_CLIENT = 'orderflow-web';
+// The gateway is the realm's only client in production (spec 023; the browser's own client before it).
+export const WEB_CLIENT = 'orderflow-gateway';
 
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -62,7 +63,9 @@ export function productionProblems(prod) {
     if (Array.isArray(value)) value.forEach((v, i) => walk(v, `${at}[${i}]`));
     else if (isObject(value)) {
       for (const [key, v] of Object.entries(value)) {
-        if (/secret|password|credentials/i.test(key)) problems.push(`it has a ${key} at ${at}.${key}: secrets stay out of git (R-2)`);
+        // A secret may only come from the environment, as a placeholder Keycloak resolves on import (spec 023).
+        const placeholder = typeof v === 'string' && /^\$\{[A-Z0-9_]+\}$/.test(v);
+        if (/secret|password|credentials/i.test(key) && !placeholder) problems.push(`it has a ${key} at ${at}.${key}: secrets stay out of git (R-2)`);
         walk(v, `${at}.${key}`);
       }
     }

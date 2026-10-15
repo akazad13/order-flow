@@ -1,5 +1,5 @@
 import createClient, { type Middleware } from 'openapi-fetch';
-import { accessToken } from '../auth';
+import { CSRF_HEADER, loginEnded } from '../auth';
 import type { components as OrderComponents, paths as OrderPaths } from './order-api';
 import type { components as NotificationComponents, paths as NotificationPaths } from './notification-api';
 import type { components as InventoryComponents, paths as InventoryPaths } from './inventory-api';
@@ -26,7 +26,22 @@ export type CancelOrderResult =
   | { outcome: 'too-late' }
   | { outcome: 'not-found' };
 
-/** Sends the logged-in customer's access token (spec 012). */
+/**
+ * Every call goes through the gateway (spec 023): it carries the page's header, and a 401 means the
+ * session is over. The page has no token to send; the gateway adds it.
+ */
+const throughGateway: Middleware = {
+  onRequest({ request }) {
+    for (const [name, value] of Object.entries(CSRF_HEADER)) request.headers.set(name, value);
+    return request;
+  },
+  onResponse({ response }) {
+    if (response.status === 401) loginEnded();
+    return response;
+  },
+};
+
+/** For the Pact consumer test only: a token of its own, as the gateway would add it (spec 008). */
 function bearer(token: () => string | null): Middleware {
   return {
     onRequest({ request }) {
@@ -39,11 +54,13 @@ function bearer(token: () => string | null): Middleware {
 
 /**
  * The UI's Order API client. A factory so the Pact consumer test (spec 008) can point the
- * exact code the app uses at Pact's mock server, with a token of its own.
+ * exact code the app uses at Pact's mock server, with a token of its own (in the app, the
+ * gateway adds the token, spec 023).
  */
-export function createOrderApi(baseUrl: string, token: () => string | null = accessToken) {
+export function createOrderApi(baseUrl: string, token?: () => string | null) {
   const client = createClient<OrderPaths>({ baseUrl });
-  client.use(bearer(token));
+  client.use(throughGateway);
+  if (token) client.use(bearer(token));
 
   return {
     async placeOrder(sku: string, quantity: number): Promise<PlaceOrderResult> {
@@ -84,7 +101,7 @@ export function createOrderApi(baseUrl: string, token: () => string | null = acc
 
 const orderApi = createOrderApi('/order-api');
 const notificationApi = createClient<NotificationPaths>({ baseUrl: '/notification-api' });
-notificationApi.use(bearer(accessToken));
+notificationApi.use(throughGateway);
 
 export function placeOrder(sku: string, quantity: number): Promise<PlaceOrderResult> {
   return orderApi.placeOrder(sku, quantity);
@@ -106,7 +123,7 @@ export async function getInbox(customerId: string): Promise<InboxMessage[]> {
 }
 
 const inventoryApi = createClient<InventoryPaths>({ baseUrl: '/inventory-api' });
-inventoryApi.use(bearer(accessToken));
+inventoryApi.use(throughGateway);
 
 /** The catalog, open to everyone (spec 017, AC-3). */
 export async function listStock(): Promise<StockItem[]> {

@@ -7,22 +7,21 @@
   "accessTokenLifespan": 900,
   "clients": [
     {
-      "clientId": "orderflow-web",
-      "name": "OrderFlow web app (specs 012, 015, 017; ADR 0008)",
+      "clientId": "orderflow-gateway",
+      "name": "OrderFlow gateway: logs customers in and keeps their tokens on the server (spec 023, ADR 0012)",
       "enabled": true,
-      "publicClient": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "orderflow-gateway-dev-secret",
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
       "redirectUris": [
-        "http://localhost:5180/*",
-        "http://localhost:5173/*"
+        "http://localhost:5180/bff/signin-oidc",
+        "http://localhost:5173/bff/signin-oidc"
       ],
-      "webOrigins": [
-        "http://localhost:5180",
-        "http://localhost:5173"
-      ],
+      "webOrigins": [],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:5180/*##http://localhost:5173/*"

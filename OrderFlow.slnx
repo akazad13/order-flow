@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/OrderFlow.Contracts/OrderFlow.Contracts.csproj" />
+    <Project Path="src/OrderFlow.Gateway/OrderFlow.Gateway.csproj" />
     <Project Path="src/OrderFlow.Inventory/OrderFlow.Inventory.csproj" />
     <Project Path="src/OrderFlow.Notification/OrderFlow.Notification.csproj" />
     <Project Path="src/OrderFlow.Order/OrderFlow.Order.csproj" />
@@ -9,6 +10,8 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/OrderFlow.ContractTests/OrderFlow.ContractTests.csproj" />
+    <Project Path="tests/OrderFlow.Gateway.ComponentTests/OrderFlow.Gateway.ComponentTests.csproj" />
+    <Project Path="tests/OrderFlow.Gateway.IntegrationTests/OrderFlow.Gateway.IntegrationTests.csproj" />
     <Project Path="tests/OrderFlow.IntegrationTesting/OrderFlow.IntegrationTesting.csproj" />
     <Project Path="tests/OrderFlow.Inventory.ComponentTests/OrderFlow.Inventory.ComponentTests.csproj" />
     <Project Path="tests/OrderFlow.Inventory.IntegrationTests/OrderFlow.Inventory.IntegrationTests.csproj" />

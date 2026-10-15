@@ -11,7 +11,7 @@ Nobody logged in: the order form took any customer ID, and any order or inbox co
 ## Decision
 
 - **Keycloak** in docker compose (`quay.io/keycloak/keycloak:26.4.2`, `start-dev`), realm `orderflow` imported from `deploy/keycloak/orderflow-realm.json`.
-- **The web app** is a public client, `orderflow-web`, using the authorization code flow with PKCE (`oidc-client-ts`). Access tokens carry the audience `orderflow-api`.
+- **The web app** (until spec 023; since then the gateway, ADR 0012) is a public client, `orderflow-web`, using the authorization code flow with PKCE (`oidc-client-ts`). Access tokens carry the audience `orderflow-api`.
 - **Services** validate JWTs themselves (`AddOrderFlowAuthentication` in ServiceDefaults): signature from the realm's keys, issuer, audience, lifetime. The customer is the token's `sub`; no API takes a customer ID from the client any more.
 - **Two addresses for one issuer:** in compose, services fetch keys from `http://keycloak:8080`, while tokens name the issuer the browser used, `http://localhost:8180/realms/orderflow`. Both are configured (`Auth:MetadataAddress`, `Auth:Issuer`); issuer validation stays on.
 - **Tests below E2E** swap the validation for a test signing key in the test host. Services have no setting that accepts test tokens, so there is no back door to switch on by mistake.

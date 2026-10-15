@@ -113,6 +113,7 @@ A nightly workflow (`.github/workflows/nightly.yml`) repeats E2E ten times and r
 | Inventory (`GET /stock`; `PUT /stock/{sku}` for admins, spec 017) | http://localhost:5102 |
 | Payment | http://localhost:5103 |
 | Notification (fake inbox) | http://localhost:5104 |
+| Gateway (logins and the page's API calls, spec 023) | http://localhost:5105 |
 | Second copies, with `docker-compose.copies.yml` (spec 013) | http://localhost:5111 to 5114 (Order, Inventory, Payment, Notification) |
 | RabbitMQ management | http://localhost:15672 (guest / guest) |
 | PostgreSQL | localhost:5432 (orderflow / orderflow; databases `orders`, `inventory`, `payments`, `notifications`) |
@@ -123,9 +124,9 @@ Every service stores its state in PostgreSQL under compose (`Persistence__Provid
 dotnet ef migrations add <Name> -p src/OrderFlow.Order -s src/OrderFlow.Order -o Persistence/Migrations
 ```
 
-For UI work, run `npm --prefix web run dev` (http://localhost:5173); it proxies to the services on the ports above.
+For UI work, run `npm --prefix web run dev` (http://localhost:5173); it proxies `/bff` and the APIs to the gateway on 5105 (running in compose, or `dotnet run --project src/OrderFlow.Gateway`).
 
-Customers log in through Keycloak (spec 012, ADR 0008). The production realm (roles, the web client; no users, no secrets) is `deploy/keycloak/orderflow-realm.json`; development adds demo users, the E2E client and local addresses from `deploy/keycloak/dev-overlay.json`, merged into `deploy/keycloak/dev/orderflow-realm.json` by `npm run build:realm` (CI checks it with `npm run check:realm`; spec 019, ADR 0011). The Order and Notification APIs and the live-updates hub need a login; tests below E2E use tokens signed by a test-only key (`tests/Shared/TestTokens.cs`), and each E2E scenario creates its own Keycloak user.
+Customers log in through Keycloak (spec 012, ADR 0008), by way of the gateway, which keeps their tokens on the server; the page holds only an HttpOnly session cookie (spec 023, ADR 0012). The production realm (roles, the gateway's client; no users, no literal secrets) is `deploy/keycloak/orderflow-realm.json`; development adds demo users, the E2E client and local addresses from `deploy/keycloak/dev-overlay.json`, merged into `deploy/keycloak/dev/orderflow-realm.json` by `npm run build:realm` (CI checks it with `npm run check:realm`; spec 019, ADR 0011). The Order and Notification APIs and the live-updates hub need a login; tests below E2E use tokens signed by a test-only key (`tests/Shared/TestTokens.cs`), and each E2E scenario creates its own Keycloak user.
 
 ## Run the production profile
 

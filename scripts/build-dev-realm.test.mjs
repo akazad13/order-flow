@@ -10,7 +10,8 @@ const PROD = {
   roles: { realm: [{ name: 'staff' }] },
   clients: [
     {
-      clientId: 'orderflow-web',
+      clientId: 'orderflow-gateway',
+      secret: '${ORDERFLOW_GATEWAY_SECRET}',
       redirectUris: ['${ORDERFLOW_WEB_URL}/*'],
       webOrigins: ['${ORDERFLOW_WEB_URL}'],
       attributes: { 'pkce.code.challenge.method': 'S256', 'post.logout.redirect.uris': '${ORDERFLOW_WEB_URL}/*' },
@@ -28,13 +29,15 @@ describe('productionProblems', () => {
     const realm = structuredClone(PROD);
     realm.users = [{ username: 'alice', credentials: [{ value: 'alice' }] }];
     realm.clients.push({ clientId: 'orderflow-e2e', secret: 'shh', redirectUris: [] });
+    realm.clients[0].secret = 'a-real-secret';
     realm.clients[0].redirectUris.push('http://localhost:5180/*');
 
     const problems = productionProblems(realm).join('\n');
     assert.match(problems, /it has users \(alice\)/);
     assert.match(problems, /it has the client orderflow-e2e/);
-    assert.match(problems, /orderflow-web allows http:\/\/localhost:5180\/\*/);
+    assert.match(problems, /orderflow-gateway allows http:\/\/localhost:5180\/\*/);
     assert.match(problems, /it has a secret at realm\.clients\[1\]\.secret/);
+    assert.match(problems, /it has a secret at realm\.clients\[0\]\.secret/, 'a literal secret, even on the gateway');
     assert.match(problems, /it has a credentials at realm\.users\[0\]\.credentials/);
   });
 });
@@ -42,7 +45,7 @@ describe('productionProblems', () => {
 describe('devRealm', () => {
   const overlay = {
     clients: [
-      { clientId: 'orderflow-web', redirectUris: ['http://localhost:5180/*'], attributes: { 'post.logout.redirect.uris': 'http://localhost:5180/*' } },
+      { clientId: 'orderflow-gateway', secret: 'dev-only', redirectUris: ['http://localhost:5180/*'], attributes: { 'post.logout.redirect.uris': 'http://localhost:5180/*' } },
       { clientId: 'orderflow-e2e', secret: 'dev-only' },
     ],
     users: [{ username: 'alice' }],
@@ -52,7 +55,8 @@ describe('devRealm', () => {
   it('adds to the production realm and removes nothing', () => {
     const dev = devRealm(PROD, overlay);
 
-    assert.deepEqual(dev.clients.map((c) => c.clientId), ['orderflow-web', 'orderflow-e2e']);
+    assert.deepEqual(dev.clients.map((c) => c.clientId), ['orderflow-gateway', 'orderflow-e2e']);
+    assert.equal(dev.clients[0].secret, 'dev-only');
     const web = dev.clients[0];
     assert.deepEqual(web.redirectUris, ['http://localhost:5180/*']);
     assert.deepEqual(web.webOrigins, ['${ORDERFLOW_WEB_URL}']);

@@ -67,8 +67,9 @@ services:
       KC_HTTPS_CERTIFICATE_FILE: /certs/tls.crt
       KC_HTTPS_CERTIFICATE_KEY_FILE: /certs/tls.key
       KC_HTTP_MANAGEMENT_SCHEME: http # the health checks only, on the management port, not published
-      # Resolved by Keycloak when it imports the production realm (spec 019, Q2).
+      # Resolved by Keycloak when it imports the production realm (spec 019, Q2; spec 023).
       ORDERFLOW_WEB_URL: https://localhost:5443
+      ORDERFLOW_GATEWAY_SECRET: ${ORDERFLOW_GATEWAY_SECRET:?run node deploy/prod/make-env.mjs}
     volumes: !override
       - ./deploy/keycloak/orderflow-realm.json:/opt/keycloak/data/import/orderflow-realm.json:ro
       - ./deploy/prod/certs:/certs:ro
@@ -96,6 +97,23 @@ services:
     <<: *healthy
     environment:
       <<: *trust-keycloak
+    volumes:
+      - ./deploy/prod/certs/ca.crt:/certs/ca.crt:ro
+    ports: !reset []
+
+  # Spec 023: a confidential client whose secret comes from the env file; the cookie goes over HTTPS only.
+  gateway:
+    <<: *healthy
+    environment:
+      Gateway__Authority: https://localhost:8443/realms/orderflow
+      Gateway__MetadataAddress: https://keycloak:8443/realms/orderflow/.well-known/openid-configuration
+      Gateway__RequireHttpsMetadata: "true"
+      Gateway__ClientSecret: ${ORDERFLOW_GATEWAY_SECRET:?run node deploy/prod/make-env.mjs}
+      Gateway__AllowedOrigins__0: https://localhost:5443
+      Gateway__AllowedOrigins__1: https://localhost:5443
+      Gateway__RefreshBefore: "00:01:00"
+      Gateway__SecureCookie: "true"
+      SSL_CERT_FILE: /certs/ca.crt
     volumes:
       - ./deploy/prod/certs/ca.crt:/certs/ca.crt:ro
     ports: !reset []

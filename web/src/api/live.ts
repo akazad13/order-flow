@@ -1,5 +1,4 @@
 import { HttpTransportType, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
-import { accessToken } from '../auth';
 import type { Order } from './clients';
 
 /**
@@ -12,9 +11,9 @@ import type { Order } from './clients';
 export function watchOrder(orderId: string, onUpdate: (order: Order) => void, onWatching: () => void): () => void {
   const connection = new HubConnectionBuilder()
     // Straight to a WebSocket, with no negotiate request first: behind a load balancer the two
-    // requests could reach different copies of the Order service (spec 013, AC-4).
+    // requests could reach different copies of the Order service (spec 013, AC-4). No token: the
+    // browser sends the session cookie and the gateway adds the token (spec 023).
     .withUrl('/order-api/hubs/orders', {
-      accessTokenFactory: () => accessToken() ?? '',
       skipNegotiation: true,
       transport: HttpTransportType.WebSockets,
     })

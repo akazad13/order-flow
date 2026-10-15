@@ -8,11 +8,12 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      // Everything goes through the gateway (spec 023, `dotnet run` on 5105), which logs in and adds the token.
       // ws: live order updates over SignalR (spec 005).
-      '/order-api': { target: 'http://localhost:5101', ws: true, rewrite: (path) => path.replace(/^\/order-api/, '') },
-      '/notification-api': { target: 'http://localhost:5104', rewrite: (path) => path.replace(/^\/notification-api/, '') },
-      // Admins manage stock (spec 017).
-      '/inventory-api': { target: 'http://localhost:5102', rewrite: (path) => path.replace(/^\/inventory-api/, '') },
+      '/bff': { target: 'http://localhost:5105' },
+      '/order-api': { target: 'http://localhost:5105', ws: true },
+      '/notification-api': { target: 'http://localhost:5105' },
+      '/inventory-api': { target: 'http://localhost:5105' },
     },
   },
   test: {

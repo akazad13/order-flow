@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect } from '@playwright/test';
-import { Given, Then, When, createUser, endSessions, logIn, storedToken } from './fixtures';
+import { Then, When, createUser, endSessions, logIn } from './fixtures';
 
 // Spec 015: staff support customers' orders, and logins renew themselves.
 
@@ -29,45 +29,25 @@ Then('they see {string}', async ({ page }, text: string) => {
   await expect(page.getByRole('region', { name: 'Order' })).toContainText(text);
 });
 
-// The page's clock is under the test's control, so a token's lifetime passes in an instant (spec 015).
-// Keycloak still runs on real time, so the old token stays valid there: the assertions are about
-// what the page does, not about what the services refuse (spec 012 covers expired tokens).
-Given('the page clock is under test control', async ({ page }) => {
-  await page.clock.install();
+// Spec 023: the gateway keeps the tokens; the page has none.
+Then("no token is in the page's storage or readable cookies", async ({ page }) => {
+  const visible = await page.evaluate(() => ({
+    storage: [...Object.values({ ...sessionStorage }), ...Object.values({ ...localStorage })].join(' '),
+    cookies: document.cookie,
+  }));
+  // A JWT starts with "eyJ" (base64 of '{"'); a session key or anything else does not.
+  expect(visible.storage).not.toContain('eyJ');
+  expect(visible.cookies).not.toContain('eyJ');
+  expect(visible.cookies).not.toContain('orderflow.session');
 });
 
-Given('the page has noted its access token', async ({ page, scenario }) => {
-  scenario.firstToken = (await storedToken(page))!;
-  expect(scenario.firstToken).toBeTruthy();
-});
-
-When("most of the access token's lifetime passes", async ({ page }) => {
-  // Tokens last 15 minutes (realm `accessTokenLifespan`); renewal starts a minute before expiry.
-  // Jump to 14:10: renewal is due, expiry is not. One jump fires each due timer once.
-  await page.clock.fastForward('14:10');
-});
-
-When("the rest of the first token's lifetime passes", async ({ page }) => {
-  await page.clock.fastForward('01:00');
+Then('the session cookie is HttpOnly and SameSite=Lax', async ({ page }) => {
+  const session = (await page.context().cookies()).find((c) => c.name === 'orderflow.session');
+  expect(session, 'the session cookie').toBeTruthy();
+  expect(session!.httpOnly).toBe(true);
+  expect(session!.sameSite).toBe('Lax');
 });
 
 When('their session is ended at Keycloak', async ({ request, scenario }) => {
   await endSessions(request, scenario.customerId);
-});
-
-Then('the page has a new access token', async ({ page, scenario }) => {
-  await expect.poll(() => storedToken(page), { timeout: 15_000 }).not.toBe(scenario.firstToken);
-});
-
-Then('the shop is called with the new token', async ({ page, scenario }) => {
-  const placing = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/order-api/orders'));
-  await page.getByLabel('SKU').fill('SKU-001');
-  await page.getByLabel('Quantity').fill('1');
-  await page.getByRole('button', { name: 'Place order' }).click();
-
-  const sent = (await placing).headers()['authorization'];
-  const stored = await storedToken(page);
-  expect(stored).not.toBe(scenario.firstToken);
-  expect(sent).toBe(`Bearer ${stored}`);
-  await expect(page.getByRole('region', { name: 'Order' })).toContainText('Status:');
 });
