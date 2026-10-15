@@ -157,7 +157,8 @@ jobs:
           cache-dependency-path: e2e/package-lock.json
       - run: bash deploy/prod/make-certs.sh && node deploy/prod/make-env.mjs
         working-directory: .
-      - run: docker compose up -d --build
+      # --wait: the services' ports are closed (spec 021); compose waits for their health checks.
+      - run: docker compose up -d --build --wait
         working-directory: .
       - run: npm ci
       - run: npx playwright install --with-deps chromium

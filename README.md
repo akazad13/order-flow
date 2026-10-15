@@ -136,10 +136,10 @@ bash deploy/prod/make-certs.sh && node deploy/prod/make-env.mjs
 ```
 
 ```bash
-docker compose -p orderflow-prod -f docker-compose.yml -f deploy/prod/docker-compose.prod.yml --env-file deploy/prod/.env up -d --build
+docker compose -p orderflow-prod -f docker-compose.yml -f deploy/prod/docker-compose.prod.yml --env-file deploy/prod/.env up -d --build --wait
 ```
 
-The shop is at https://localhost:5443 and Keycloak at https://localhost:8443 (the browser warns about the local certificate unless you trust `deploy/prod/certs/ca.crt`). There are no users: create one in Keycloak's admin console with the administrator from `deploy/prod/.env`. The smoke test CI runs:
+Only the shop (https://localhost:5443) and Keycloak (https://localhost:8443) are reachable from outside; the services, PostgreSQL and RabbitMQ only from inside, e.g. with `docker compose exec` (spec 021). The browser warns about the local certificate unless you trust `deploy/prod/certs/ca.crt`. There are no users: create one in Keycloak's admin console with the administrator from `deploy/prod/.env`. The smoke test CI runs:
 
 ```bash
 cd e2e && node scripts/wait-for-stack.mjs --prod && npm run test:prod

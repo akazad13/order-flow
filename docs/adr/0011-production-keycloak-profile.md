@@ -19,4 +19,4 @@ ADR 0008 ran Keycloak in development mode: HTTP, an in-container database, `admi
 
 - Development and production cannot drift: development is production plus a checked overlay.
 - The profile uses the development stack's host ports: one runs at a time locally.
-- Not covered: a cloud deployment, a real domain, high availability, backups, TLS to RabbitMQ and PostgreSQL, and closing the services' own ports (the profile still publishes them, for the smoke test's checks).
+- Not covered: a cloud deployment, a real domain, high availability, backups, and TLS to RabbitMQ and PostgreSQL. (Spec 021 closed the services', PostgreSQL's and RabbitMQ's ports: only the shop and Keycloak are reachable from outside.)

@@ -3,6 +3,7 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { connect } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type APIRequestContext } from '@playwright/test';
@@ -45,6 +46,30 @@ function container(service: string): string {
   return id.split('\n')[0];
 }
 
+/** True if something accepts a TCP connection on localhost at the port. */
+function listening(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = connect({ host: '127.0.0.1', port, timeout: 3_000 });
+    socket.once('connect', () => (socket.destroy(), resolve(true)));
+    socket.once('timeout', () => (socket.destroy(), resolve(false)));
+    socket.once('error', () => resolve(false));
+  });
+}
+
+/** An HTTP request from inside the profile's network: bash's /dev/tcp in the Order container (spec 021, Q2). Returns the status line. */
+function fromInside(method: string, host: string, path: string): string {
+  const script = `exec 3<>/dev/tcp/${host}/8080 && printf '${method} ${path} HTTP/1.1\r\nHost: ${host}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n' >&3 && head -1 <&3`;
+  return execFileSync('docker', ['exec', container('order'), 'bash', '-c', script], { encoding: 'utf8' }).trim();
+}
+
+test('Only the shop and Keycloak are reachable from outside (spec 021, AC-1)', async () => {
+  expect(await listening(5443), 'the shop').toBe(true);
+  expect(await listening(8443), 'Keycloak').toBe(true);
+  for (const [port, what] of [[5101, 'Order'], [5102, 'Inventory'], [5103, 'Payment'], [5104, 'Notification'], [5432, 'PostgreSQL'], [5672, 'RabbitMQ'], [15672, "RabbitMQ's management UI"]] as const) {
+    expect(await listening(port), `${what} (${port})`).toBe(false);
+  }
+});
+
 test('Keycloak answers only over HTTPS, and tokens name the HTTPS address (AC-3)', async ({ request }) => {
   const metadata = await request.get(`${realm}/.well-known/openid-configuration`);
   expect(metadata.ok()).toBeTruthy();
@@ -72,9 +97,9 @@ test('The production realm has no demo users and no test client (AC-1)', async (
   expect(web.redirectUris).toEqual(['https://localhost:5443/*']);
 });
 
-test('Nothing test-only is switched on (AC-6)', async ({ request }) => {
-  expect((await request.put('http://localhost:5103/test/stalls/someone')).status()).toBe(404);
-  expect((await request.put('http://localhost:5102/stock/SKU-001', { data: { name: 'x', unitPrice: 1, available: 1 } })).status()).toBe(401);
+test('Nothing test-only is switched on (AC-6; checked through the shop and from inside, spec 021 AC-3)', async ({ request }) => {
+  expect(fromInside('PUT', 'payment', '/test/stalls/someone')).toMatch(/^HTTP\/1\.1 404/);
+  expect((await request.put('/inventory-api/stock/SKU-001', { data: { name: 'x', unitPrice: 1, available: 1 } })).status()).toBe(401);
 });
 
 test('A customer logs in through the real page over HTTPS and an order is confirmed (AC-5)', async ({ page, request }) => {

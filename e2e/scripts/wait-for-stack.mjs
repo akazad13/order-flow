@@ -1,19 +1,17 @@
 // Waits until every service in docker compose answers, so E2E never starts against a half-up stack.
 // With --copies, also waits for the second copy of each service (docker-compose.copies.yml, spec 013).
 // With --prod, waits for the production profile (spec 019): Keycloak and the shop over HTTPS,
-// checked against the local CA from deploy/prod/make-certs.sh.
+// checked against the local CA from deploy/prod/make-certs.sh. The services' own ports are closed
+// there (spec 021); `docker compose up --wait` waits for them to be healthy instead.
 import { readFileSync } from 'node:fs';
 import { get } from 'node:https';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const prod = process.argv.includes('--prod');
-const targets = [
-  'http://localhost:5101/health',
-  'http://localhost:5102/health',
-  'http://localhost:5103/health',
-  'http://localhost:5104/health',
-];
+const targets = prod
+  ? []
+  : ['http://localhost:5101/health', 'http://localhost:5102/health', 'http://localhost:5103/health', 'http://localhost:5104/health'];
 if (prod) {
   targets.push('https://localhost:5443/', 'https://localhost:8443/realms/orderflow/.well-known/openid-configuration');
 } else {
