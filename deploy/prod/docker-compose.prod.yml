@@ -1,0 +1,93 @@
+# The production profile (spec 019), run locally: Keycloak's optimized production build on its own
+# PostgreSQL, HTTPS only, secrets from deploy/prod/.env, the production realm (no demo users, no
+# test client), and services that fetch Keycloak's keys over HTTPS only. Paths are relative to
+# the repository root (the first compose file's folder).
+#
+#   bash deploy/prod/make-certs.sh && node deploy/prod/make-env.mjs
+#   docker compose -p orderflow-prod -f docker-compose.yml -f deploy/prod/docker-compose.prod.yml --env-file deploy/prod/.env up -d --build
+#
+# It uses the same host ports as the development stack: stop that one first.
+
+x-trust-keycloak: &trust-keycloak
+  # Keycloak over HTTPS, inside compose; tokens name the browser's address as issuer (ADR 0008).
+  Auth__Authority: https://localhost:8443/realms/orderflow
+  Auth__MetadataAddress: https://keycloak:8443/realms/orderflow/.well-known/openid-configuration
+  Auth__RequireHttpsMetadata: "true"
+  # The local CA from make-certs.sh. With a publicly trusted certificate this line goes.
+  SSL_CERT_FILE: /certs/ca.crt
+
+services:
+  keycloak-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?run node deploy/prod/make-env.mjs}
+    volumes:
+      - keycloak-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "keycloak", "-d", "keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  keycloak:
+    image: orderflow/keycloak-prod
+    build:
+      context: deploy/keycloak
+    command: !override ["start", "--optimized", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:?run node deploy/prod/make-env.mjs}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?run node deploy/prod/make-env.mjs}
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?run node deploy/prod/make-env.mjs}
+      KC_HOSTNAME: https://localhost:8443
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true" # services reach it as https://keycloak:8443
+      KC_HTTP_ENABLED: "false"
+      KC_HTTPS_PORT: "8443"
+      KC_HTTPS_CERTIFICATE_FILE: /certs/tls.crt
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /certs/tls.key
+      KC_HTTP_MANAGEMENT_SCHEME: http # the health checks only, on the management port, not published
+      # Resolved by Keycloak when it imports the production realm (spec 019, Q2).
+      ORDERFLOW_WEB_URL: https://localhost:5443
+    volumes: !override
+      - ./deploy/keycloak/orderflow-realm.json:/opt/keycloak/data/import/orderflow-realm.json:ro
+      - ./deploy/prod/certs:/certs:ro
+    ports: !override ["8443:8443"]
+    depends_on:
+      keycloak-db: { condition: service_healthy }
+
+  order:
+    environment:
+      <<: *trust-keycloak
+    volumes:
+      - ./deploy/prod/certs/ca.crt:/certs/ca.crt:ro
+
+  inventory:
+    environment:
+      <<: *trust-keycloak
+    volumes:
+      - ./deploy/prod/certs/ca.crt:/certs/ca.crt:ro
+
+  notification:
+    environment:
+      <<: *trust-keycloak
+    volumes:
+      - ./deploy/prod/certs/ca.crt:/certs/ca.crt:ro
+
+  payment:
+    environment:
+      Payment__EnableTestEndpoints: "false" # no test switches in production (AC-6)
+
+  web:
+    build:
+      args:
+        VITE_AUTH_AUTHORITY: https://localhost:8443/realms/orderflow
+    volumes:
+      - ./web/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/prod/certs:/certs:ro
+    ports: !override ["5443:443"]
+
+volumes:
+  keycloak-db-data:

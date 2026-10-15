@@ -35,7 +35,7 @@ services:
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true" # services reach it as http://keycloak:8080
       KC_HEALTH_ENABLED: "true"
     volumes:
-      - ./deploy/keycloak:/opt/keycloak/data/import:ro
+      - ./deploy/keycloak/dev:/opt/keycloak/data/import:ro # generated: production realm + dev overlay (spec 019)
     ports:
       - "8180:8080"
     healthcheck:

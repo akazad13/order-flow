@@ -31,6 +31,8 @@ jobs:
           BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
       # Spec 009: specs, plans, features and tests agree; no banned packages (AC-1 to AC-5).
       - run: npm run check:specs
+      # Spec 019: the production realm has no users, other clients or secrets; the dev realm is current.
+      - run: npm run check:realm
       # The gates' own tests (AC-8).
       - run: npm run test:scripts
 
@@ -127,6 +129,40 @@ jobs:
           path: |
             e2e/playwright-report
             e2e/test-results
+      - run: docker compose logs
+        if: failure()
+        working-directory: .
+      - run: docker compose down -v
+        if: always()
+        working-directory: .
+
+  prod-profile:
+    name: Production profile (Keycloak over HTTPS) smoke test
+    needs: [contracts, dotnet, integration, web]
+    runs-on: ubuntu-latest
+    # Spec 019, AC-8. Certificates and secrets are made here, for this run only (R-2).
+    env:
+      COMPOSE_PROJECT_NAME: orderflow-prod
+      COMPOSE_FILE: docker-compose.yml:deploy/prod/docker-compose.prod.yml
+      COMPOSE_ENV_FILES: deploy/prod/.env
+    defaults:
+      run:
+        working-directory: e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - run: bash deploy/prod/make-certs.sh && node deploy/prod/make-env.mjs
+        working-directory: .
+      - run: docker compose up -d --build
+        working-directory: .
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/wait-for-stack.mjs --prod
+      - run: npm run test:prod
       - run: docker compose logs
         if: failure()
         working-directory: .

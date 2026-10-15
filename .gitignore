@@ -490,3 +490,6 @@ playwright-report/
 
 # Reqnroll generated code-behind (written next to linked feature files)
 *.feature.cs
+
+# Production profile (spec 019): certificates and secrets are made locally, never committed
+deploy/prod/certs/

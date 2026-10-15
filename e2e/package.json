@@ -7,6 +7,7 @@
     "wait": "node scripts/wait-for-stack.mjs",
     "wait:copies": "node scripts/wait-for-stack.mjs --copies",
     "test": "bddgen && playwright test",
+    "test:prod": "playwright test -c playwright.prod.config.ts",
     "report": "playwright show-report"
   },
   "devDependencies": {

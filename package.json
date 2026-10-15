@@ -7,7 +7,9 @@
     "lint:contracts": "npm run lint:openapi && npm run lint:asyncapi",
     "check:specs": "node scripts/check-specs.mjs",
     "test:scripts": "node --test \"scripts/*.test.mjs\" \"e2e/scripts/*.test.mjs\"",
-    "check:contracts": "node scripts/check-contracts.mjs"
+    "check:contracts": "node scripts/check-contracts.mjs",
+    "build:realm": "node scripts/build-dev-realm.mjs",
+    "check:realm": "node scripts/build-dev-realm.mjs --check"
   },
   "devDependencies": {
     "@asyncapi/cli": "^4.1.1",

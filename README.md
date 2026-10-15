@@ -125,7 +125,25 @@ dotnet ef migrations add <Name> -p src/OrderFlow.Order -s src/OrderFlow.Order -o
 
 For UI work, run `npm --prefix web run dev` (http://localhost:5173); it proxies to the services on the ports above.
 
-Customers log in through Keycloak (spec 012, ADR 0008); the realm, its web client and the demo user are in `deploy/keycloak/orderflow-realm.json`. The Order and Notification APIs and the live-updates hub need a login; tests below E2E use tokens signed by a test-only key (`tests/Shared/TestTokens.cs`), and each E2E scenario creates its own Keycloak user.
+Customers log in through Keycloak (spec 012, ADR 0008). The production realm (roles, the web client; no users, no secrets) is `deploy/keycloak/orderflow-realm.json`; development adds demo users, the E2E client and local addresses from `deploy/keycloak/dev-overlay.json`, merged into `deploy/keycloak/dev/orderflow-realm.json` by `npm run build:realm` (CI checks it with `npm run check:realm`; spec 019, ADR 0011). The Order and Notification APIs and the live-updates hub need a login; tests below E2E use tokens signed by a test-only key (`tests/Shared/TestTokens.cs`), and each E2E scenario creates its own Keycloak user.
+
+## Run the production profile
+
+A production-ready Keycloak, run locally (spec 019, ADR 0011): its optimized build on its own PostgreSQL, HTTPS only, secrets from `deploy/prod/.env` (git-ignored), the production realm with no demo users or test client, services that fetch Keycloak's keys over HTTPS only. It uses the same ports as the development stack, so stop that first. Make a local certificate authority and certificate, and random secrets (neither is committed):
+
+```bash
+bash deploy/prod/make-certs.sh && node deploy/prod/make-env.mjs
+```
+
+```bash
+docker compose -p orderflow-prod -f docker-compose.yml -f deploy/prod/docker-compose.prod.yml --env-file deploy/prod/.env up -d --build
+```
+
+The shop is at https://localhost:5443 and Keycloak at https://localhost:8443 (the browser warns about the local certificate unless you trust `deploy/prod/certs/ca.crt`). There are no users: create one in Keycloak's admin console with the administrator from `deploy/prod/.env`. The smoke test CI runs:
+
+```bash
+cd e2e && node scripts/wait-for-stack.mjs --prod && npm run test:prod
+```
 
 ## Working on a feature
 
