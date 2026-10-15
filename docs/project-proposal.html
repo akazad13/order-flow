@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OrderFlow Project Proposal</title>
+<style>
+  :root {
+    --bg: #fbfaf8; --surface: #ffffff; --text: #1f1e1c; --muted: #5f5d58; --border: #e3e0da;
+    --accent: #2f6fb5; --accent-tint: rgba(47, 111, 181, 0.12); --code-bg: #f2f0ec;
+    --chart-axis: #8a877f; --chart-grid: #e8e5df; --broker-tint: #f1efe9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1a1a19; --surface: #232321; --text: #ecebe7; --muted: #a8a59e; --border: #3a3936;
+      --accent: #6ea6e6; --accent-tint: rgba(110, 166, 230, 0.16); --code-bg: #2b2b28;
+      --chart-axis: #8e8b84; --chart-grid: #34332f; --broker-tint: #2a2a27;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a1a19; --surface: #232321; --text: #ecebe7; --muted: #a8a59e; --border: #3a3936;
+    --accent: #6ea6e6; --accent-tint: rgba(110, 166, 230, 0.16); --code-bg: #2b2b28;
+    --chart-axis: #8e8b84; --chart-grid: #34332f; --broker-tint: #2a2a27;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 48px 16px 80px; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 8px; }
+  h2 { font-size: 1.35rem; margin: 48px 0 12px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .meta { color: var(--muted); font-size: 0.9rem; margin: 0 0 32px; }
+  p, li { max-width: 72ch; }
+  code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 0.88em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; overflow-x: auto; font-size: 0.85rem; line-height: 1.5; }
+  pre code { background: none; padding: 0; }
+  .table-wrap { overflow-x: auto; margin: 12px 0 20px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; background: var(--code-bg); }
+  tr:last-child td { border-bottom: none; }
+  figure { margin: 20px 0; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
+  ul.checklist { list-style: none; padding-left: 0; }
+  ul.checklist li { padding-left: 1.8em; position: relative; }
+  ul.checklist li::before { content: ""; position: absolute; left: 0; top: 0.35em; width: 1em; height: 1em; border: 1.5px solid var(--muted); border-radius: 3px; }
+  .ink { fill: var(--text); } .quiet { fill: var(--muted); }
+  .edge { stroke: var(--chart-axis); } .grid { stroke: var(--chart-grid); }
+</style>
+</head>
+<body>
+<main>
+<h1>Project Proposal: Spec-Driven Event-Driven Order Platform</h1>
+<p class="meta"><time datetime="2026-10-14">2026-10-14</time></p>
+
+<h2 id="summary">Summary</h2>
+<p>Build <strong>OrderFlow</strong>, a small event-driven order fulfillment platform, over 8 weeks where every feature starts as a written spec and every spec ends as an automated test. The domain is familiar (place an order, reserve stock, take payment, notify the customer), so the learning effort goes into the method, not the business rules.</p>
+<p>Spec-driven development (SDD) here means: the spec is the source of truth, code and tests are derived from it, and a change to behavior starts with a change to the spec. The project exercises four kinds of spec: a feature spec in plain language, Gherkin acceptance criteria, OpenAPI for HTTP, and AsyncAPI for events.</p>
+
+<h2 id="learning-goals">Learning goals</h2>
+<p>By the end you should be able to do each of these without a tutorial open.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Area</th><th>Goal</th><th>Evidence it is learned</th></tr></thead>
+<tbody>
+<tr><td>Spec-driven development</td><td>Write a feature spec, plan and task list before code, and keep them current</td><td>Every merged PR links a spec change</td></tr>
+<tr><td>Behavior specs</td><td>Turn acceptance criteria into executable Gherkin scenarios</td><td>Scenarios run green in CI via Reqnroll (services) and playwright-bdd (UI)</td></tr>
+<tr><td>API and event contracts</td><td>Design HTTP APIs in OpenAPI and events in AsyncAPI, contract first</td><td>Code is generated or validated against the contract files</td></tr>
+<tr><td>Event-driven architecture</td><td>Use pub/sub, a saga, the outbox pattern and idempotent consumers</td><td>A duplicate or out-of-order event does not corrupt state</td></tr>
+<tr><td>Test automation</td><td>Build a test pyramid: unit, component, contract, integration</td><td>One command runs every layer locally and in CI</td></tr>
+<tr><td>End-to-end testing</td><td>Drive the UI and assert on async outcomes without flaky sleeps</td><td>E2E suite passes 20 runs in a row</td></tr>
+<tr><td>CI/CD</td><td>Gate merges on spec lint, contract checks and tests</td><td>Pipeline blocks a PR that breaks a contract</td></tr>
+</tbody></table></div>
+
+<h2 id="domain-and-scope">Domain and scope</h2>
+<p>A customer places an order in a web UI; four services cooperate through events until the order is confirmed or cancelled. No service calls another service's HTTP API during the order flow.</p>
+<p><strong>Services</strong></p>
+<div class="table-wrap"><table>
+<thead><tr><th>Service</th><th>Owns</th><th>Publishes</th><th>Consumes</th></tr></thead>
+<tbody>
+<tr><td>Order</td><td>Orders and the order saga</td><td>OrderPlaced, OrderConfirmed, OrderCancelled</td><td>StockReserved, StockRejected, PaymentSucceeded, PaymentFailed</td></tr>
+<tr><td>Inventory</td><td>Stock levels and reservations</td><td>StockReserved, StockRejected, StockReleased</td><td>OrderPlaced, OrderCancelled</td></tr>
+<tr><td>Payment</td><td>Payment attempts (fake gateway)</td><td>PaymentSucceeded, PaymentFailed</td><td>StockReserved</td></tr>
+<tr><td>Notification</td><td>Customer messages (log or fake inbox)</td><td>none</td><td>OrderConfirmed, OrderCancelled</td></tr>
+</tbody></table></div>
+<p><strong>Features (each one is a spec)</strong></p>
+<ol>
+<li>Place an order and see it confirmed.</li>
+<li>Reject an order when stock is short, with a clear reason.</li>
+<li>Cancel the order and release stock when payment fails.</li>
+<li>Handle a duplicate event without double-charging or double-reserving.</li>
+<li>Show live order status in the UI (polling or SignalR).</li>
+<li>Customer cancels a pending order.</li>
+</ol>
+<p><strong>Out of scope:</strong> real payments, authentication beyond a fake user, multi-currency, deployment to a cloud.</p>
+
+<h2 id="architecture-and-tech-stack">Architecture and tech stack</h2>
+<p>The Order service runs an orchestrated saga; every service owns its data and writes events through an outbox so a crash cannot lose or duplicate a message.</p>
+<figure>
+<svg viewBox="0 0 760 420" role="img" aria-label="Services talk only through events on the broker" font-size="13">
+  <defs><marker id="arch-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill: var(--chart-axis)"/></marker></defs>
+  <text x="24" y="34" font-size="15" font-weight="600" class="ink">Services talk only through events on the broker</text>
+  <g fill="none" class="edge" stroke-width="1.25">
+    <path d="M224 108H294" marker-end="url(#arch-arrow)"/>
+    <path d="M556 108H584" stroke-dasharray="4 4"/>
+    <path d="M400 152V198" marker-end="url(#arch-arrow)"/>
+    <path d="M452 198V154" marker-end="url(#arch-arrow)"/>
+    <path d="M132 250V294" marker-start="url(#arch-arrow)" marker-end="url(#arch-arrow)"/>
+    <path d="M380 250V294" marker-start="url(#arch-arrow)" marker-end="url(#arch-arrow)"/>
+    <path d="M628 250V294" marker-end="url(#arch-arrow)"/>
+  </g>
+  <text x="259" y="100" text-anchor="middle" font-size="11.5" class="quiet">HTTP</text>
+  <text x="392" y="180" text-anchor="end" font-size="11.5" class="quiet">publish</text>
+  <text x="460" y="180" font-size="11.5" class="quiet">consume</text>
+
+  <rect x="24" y="72" width="200" height="72" rx="8" fill="none" class="edge" stroke-width="1.25"/>
+  <text x="124" y="96" text-anchor="middle" font-weight="600" class="ink">Web UI</text>
+  <text x="124" y="112" text-anchor="middle" font-size="11.5" class="quiet">React + TypeScript</text>
+  <text x="124" y="128" text-anchor="middle" font-size="11.5" class="quiet">Driven by Playwright</text>
+
+  <rect x="296" y="64" width="260" height="88" rx="8" style="fill: var(--accent-tint); stroke: var(--accent)" stroke-width="2"/>
+  <text x="426" y="88" text-anchor="middle" font-weight="600" class="ink">Order service</text>
+  <text x="426" y="104" text-anchor="middle" font-size="11.5" class="ink">REST API from OpenAPI</text>
+  <text x="426" y="120" text-anchor="middle" font-size="11.5" class="ink">Order saga + outbox</text>
+  <text x="426" y="136" text-anchor="middle" font-size="11.5" class="ink">Own PostgreSQL</text>
+
+  <rect x="584" y="64" width="152" height="88" rx="8" fill="none" class="edge" stroke-width="1.25"/>
+  <text x="660" y="88" text-anchor="middle" font-weight="600" class="ink">Contracts</text>
+  <text x="660" y="104" text-anchor="middle" font-size="11.5" class="quiet">OpenAPI (HTTP)</text>
+  <text x="660" y="120" text-anchor="middle" font-size="11.5" class="quiet">AsyncAPI (events)</text>
+  <text x="660" y="136" text-anchor="middle" font-size="11.5" class="quiet">Gherkin features</text>
+
+  <rect x="24" y="200" width="712" height="48" rx="8" style="fill: var(--broker-tint)" class="edge" stroke-width="1.25"/>
+  <text x="380" y="220" text-anchor="middle" font-weight="600" class="ink">Message broker: RabbitMQ via MassTransit</text>
+  <text x="380" y="238" text-anchor="middle" font-size="11.5" class="quiet">one exchange per event type, retries and a dead-letter queue</text>
+
+  <rect x="24" y="296" width="216" height="72" rx="8" fill="none" class="edge" stroke-width="1.25"/>
+  <text x="132" y="320" text-anchor="middle" font-weight="600" class="ink">Inventory service</text>
+  <text x="132" y="336" text-anchor="middle" font-size="11.5" class="quiet">Reserves and releases stock</text>
+  <text x="132" y="352" text-anchor="middle" font-size="11.5" class="quiet">Own PostgreSQL + outbox</text>
+
+  <rect x="272" y="296" width="216" height="72" rx="8" fill="none" class="edge" stroke-width="1.25"/>
+  <text x="380" y="320" text-anchor="middle" font-weight="600" class="ink">Payment service</text>
+  <text x="380" y="336" text-anchor="middle" font-size="11.5" class="quiet">Fake gateway with a fail flag</text>
+  <text x="380" y="352" text-anchor="middle" font-size="11.5" class="quiet">Idempotent consumer</text>
+
+  <rect x="520" y="296" width="216" height="72" rx="8" fill="none" class="edge" stroke-width="1.25"/>
+  <text x="628" y="320" text-anchor="middle" font-weight="600" class="ink">Notification service</text>
+  <text x="628" y="336" text-anchor="middle" font-size="11.5" class="quiet">Fake inbox for E2E checks</text>
+  <text x="628" y="352" text-anchor="middle" font-size="11.5" class="quiet">Consumes events only</text>
+
+  <text x="24" y="396" font-size="11.5" class="quiet">Dashed line: every endpoint and event is checked against the contracts in CI.</text>
+</svg>
+<figcaption>OrderFlow architecture · 4 services, 1 broker</figcaption>
+</figure>
+<p>The UI is the only HTTP caller; everything between services is an event on the broker.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Concern</th><th>Choice</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Runtime</td><td>.NET 10 (LTS), C#</td><td>Minimal APIs per service</td></tr>
+<tr><td>Messaging</td><td>RabbitMQ + MassTransit v8</td><td>Pin v8 (open source); in-memory transport for fast tests</td></tr>
+<tr><td>Persistence</td><td>PostgreSQL + EF Core</td><td>MassTransit EF Core outbox and saga repository</td></tr>
+<tr><td>Mapping</td><td>Mapperly or hand-written mappers</td><td>AutoMapper is not allowed</td></tr>
+<tr><td>UI</td><td>React + TypeScript (Vite)</td><td>Typed API client generated from OpenAPI (openapi-typescript); live status via the SignalR JS client</td></tr>
+<tr><td>Spec tooling</td><td>GitHub Spec Kit, Spectral, AsyncAPI CLI</td><td>Lint and validate contracts in CI</td></tr>
+<tr><td>BDD</td><td>Reqnroll</td><td>Open-source successor to SpecFlow</td></tr>
+<tr><td>Test doubles</td><td>NSubstitute</td><td>Moq is not allowed</td></tr>
+<tr><td>Local stack</td><td>docker compose (optional .NET Aspire)</td><td>One command starts everything</td></tr>
+<tr><td>CI</td><td>GitHub Actions or Azure Pipelines</td><td>Same scripts run locally</td></tr>
+</tbody></table></div>
+
+<h2 id="the-spec-driven-workflow">The spec-driven workflow</h2>
+<p>Every feature passes through the same six steps, and no production code is written before step 4. Use GitHub Spec Kit (<code>specify</code> CLI) or plain Markdown templates with the same file names; the discipline matters more than the tool.</p>
+<ol>
+<li><strong>Specify</strong> (<code>specs/NNN-feature/spec.md</code>): the problem, user stories, acceptance criteria, edge cases, and explicit non-goals. No technology words.</li>
+<li><strong>Clarify</strong>: list open questions at the bottom of the spec and resolve each one before planning. An AI assistant is useful here as a reviewer that hunts for ambiguity.</li>
+<li><strong>Plan</strong> (<code>plan.md</code>): which services change, which events and endpoints are added, data model changes, and the test plan per layer.</li>
+<li><strong>Contract</strong> (<code>contracts/</code>): update <code>openapi.yaml</code> and <code>asyncapi.yaml</code>, then turn acceptance criteria into <code>.feature</code> files. Lint both contracts; run the scenarios and watch them fail.</li>
+<li><strong>Tasks and build</strong> (<code>tasks.md</code>): small, ordered tasks, each ending with a test going green. Inner loop is TDD.</li>
+<li><strong>Verify and close</strong>: all layers green in CI, spec status set to Done, and any learning fed back into the spec template.</li>
+</ol>
+<p><strong>Spec layers and what each one drives</strong></p>
+<div class="table-wrap"><table>
+<thead><tr><th>Spec artifact</th><th>Format</th><th>Drives</th></tr></thead>
+<tbody>
+<tr><td>Feature spec</td><td>Markdown (<code>spec.md</code>)</td><td>Plan, scope reviews, PR descriptions</td></tr>
+<tr><td>Acceptance criteria</td><td>Gherkin (<code>.feature</code>)</td><td>Reqnroll component tests and Playwright E2E tests</td></tr>
+<tr><td>HTTP contract</td><td>OpenAPI 3.1</td><td>Server stubs, typed TypeScript client for the UI, Pact consumer tests</td></tr>
+<tr><td>Event contract</td><td>AsyncAPI 3.0 + JSON Schema per event</td><td>Message classes, schema validation tests, event catalog docs</td></tr>
+<tr><td>Architecture decisions</td><td>ADR Markdown (<code>docs/adr/</code>)</td><td>Why a pattern was chosen (saga vs choreography, outbox)</td></tr>
+</tbody></table></div>
+<p><strong>Rule of thumb:</strong> if a reviewer cannot tell from the spec alone what a test should assert, the spec is not finished.</p>
+
+<h2 id="testing-strategy">Testing strategy</h2>
+<p>Each layer answers one question, and each scenario in a <code>.feature</code> file is automated at the lowest layer that can prove it. Only the critical customer journeys go all the way to E2E.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Layer</th><th>Question it answers</th><th>Tools</th><th>Runs against</th><th>Target count</th></tr></thead>
+<tbody>
+<tr><td>Unit</td><td>Is the domain logic right? (order state machine, stock math)</td><td>xUnit, NSubstitute, Shouldly; Vitest + React Testing Library for the UI</td><td>In memory</td><td>100+</td></tr>
+<tr><td>Component (BDD)</td><td>Does one service meet its acceptance criteria?</td><td>Reqnroll + WebApplicationFactory, MassTransit test harness</td><td>One service, in-memory bus</td><td>1 per scenario</td></tr>
+<tr><td>Contract</td><td>Do producers and consumers agree on the shape?</td><td>Pact JS (React consumer) + PactNet (Order API provider), JSON Schema validation of AsyncAPI payloads</td><td>Contract files</td><td>1 per endpoint and event</td></tr>
+<tr><td>Integration</td><td>Does it work with the real broker and database?</td><td>Testcontainers (RabbitMQ, PostgreSQL)</td><td>Real infra in Docker</td><td>15 to 25</td></tr>
+<tr><td>End-to-end</td><td>Can a customer complete the journey?</td><td>Playwright Test (TypeScript) with playwright-bdd running the shared Gherkin files</td><td>Full stack via docker compose</td><td>6 to 10</td></tr>
+</tbody></table></div>
+<p><strong>Testing async flows without flakiness</strong></p>
+<ul>
+<li>Never <code>Thread.Sleep</code>. Poll with a timeout (<code>Eventually(...)</code> helper or Playwright's auto-waiting <code>expect</code>).</li>
+<li>Give every test run its own correlation ID and assert on it, so parallel tests cannot see each other's events.</li>
+<li>Expose a test-only endpoint or event spy that records published events, so E2E tests can assert "OrderCancelled was published" as well as what the UI shows.</li>
+<li>Fault injection: a header or config flag makes the fake payment gateway fail, so the unhappy path is testable on demand.</li>
+<li>Idempotency tests publish the same message twice and assert state changed once.</li>
+</ul>
+<p><strong>Quality gates in CI</strong> (GitHub Actions or Azure Pipelines): spectral lint on OpenAPI and AsyncAPI, unit + component on every push, contract + integration on every PR, E2E on PR to main with trace and video uploaded on failure.</p>
+
+<h2 id="repository-structure">Repository structure</h2>
+<p>One mono-repo keeps specs, contracts, code and tests side by side, so a single PR shows the spec change and the code that satisfies it.</p>
+<pre><code>orderflow/
+  specs/
+    001-place-order/        spec.md, plan.md, tasks.md, research.md
+    002-stock-rejection/
+    ...
+  contracts/
+    http/openapi.yaml
+    events/asyncapi.yaml
+    events/schemas/*.json   one JSON Schema per event
+  features/                 Gherkin, shared by component and E2E suites
+  docs/adr/
+  src/
+    OrderFlow.Order/
+    OrderFlow.Inventory/
+    OrderFlow.Payment/
+    OrderFlow.Notification/
+    OrderFlow.Contracts/    event records generated or checked against schemas
+    OrderFlow.Web/          React + TypeScript app (Vite)
+  tests/
+    *.UnitTests/
+    *.ComponentTests/       Reqnroll
+    OrderFlow.ContractTests/
+    OrderFlow.IntegrationTests/  Testcontainers
+    OrderFlow.E2E/          Playwright Test + playwright-bdd (TypeScript)
+  docker-compose.yml
+  .github/workflows/ci.yml</code></pre>
+
+<h2 id="milestones-and-timeline">Milestones and timeline</h2>
+<p>The plan runs 8 weeks at roughly 6 to 8 hours a week, and each milestone is closed only when its specs are Done and its tests pass in CI.</p>
+<figure>
+<svg viewBox="0 0 760 470" role="img" aria-label="The first full spec-to-E2E loop lands in week 3" font-size="13">
+  <text x="24" y="30" font-size="15" font-weight="600" class="ink">The first full spec-to-E2E loop lands in week 3</text>
+  <text x="24" y="50" font-size="11.5" class="quiet">Eight weeks, one spec at a time; each milestone ends with its tests green in CI</text>
+  <g class="grid">
+    <line x1="344" x2="344" y1="88" y2="452"/><line x1="393" x2="393" y1="88" y2="452"/><line x1="442" x2="442" y1="88" y2="452"/>
+    <line x1="491" x2="491" y1="88" y2="452"/><line x1="540" x2="540" y1="88" y2="452"/><line x1="589" x2="589" y1="88" y2="452"/>
+    <line x1="638" x2="638" y1="88" y2="452"/><line x1="687" x2="687" y1="88" y2="452"/><line x1="736" x2="736" y1="88" y2="452"/>
+  </g>
+  <line x1="344" x2="736" y1="88" y2="88" class="edge" stroke-width="1.25"/>
+  <g font-size="11.5" text-anchor="middle" class="quiet">
+    <text x="368.5" y="78">W1</text><text x="417.5" y="78">W2</text><text x="466.5" y="78">W3</text><text x="515.5" y="78">W4</text>
+    <text x="564.5" y="78">W5</text><text x="613.5" y="78">W6</text><text x="662.5" y="78">W7</text><text x="711.5" y="78">W8</text>
+  </g>
+  <g stroke-width="1.25" style="fill: var(--chart-axis); fill-opacity: 0.18; stroke: var(--chart-axis)">
+    <rect x="347" y="101" width="43" height="18" rx="9"/>
+    <rect x="494" y="205" width="43" height="18" rx="9"/>
+    <rect x="543" y="257" width="43" height="18" rx="9"/>
+    <rect x="592" y="309" width="43" height="18" rx="9"/>
+    <rect x="641" y="361" width="43" height="18" rx="9"/>
+    <rect x="690" y="413" width="43" height="18" rx="9"/>
+  </g>
+  <rect x="396" y="153" width="92" height="18" rx="9" stroke-width="2" style="fill: var(--accent); fill-opacity: 0.18; stroke: var(--accent)"/>
+  <text x="24" y="114" font-weight="600" class="ink">Foundations</text>
+  <text x="24" y="130" font-size="11.5" class="quiet">Repo, spec templates, CI, walking skeleton</text>
+  <text x="24" y="166" font-weight="600" class="ink">Place order, end to end</text>
+  <text x="24" y="182" font-size="11.5" class="quiet">First full spec-to-E2E loop, happy path</text>
+  <text x="24" y="218" font-weight="600" class="ink">Unhappy paths</text>
+  <text x="24" y="234" font-size="11.5" class="quiet">Stock rejection, payment failure, compensation</text>
+  <text x="24" y="270" font-weight="600" class="ink">Real infrastructure</text>
+  <text x="24" y="286" font-size="11.5" class="quiet">RabbitMQ, PostgreSQL, outbox, Testcontainers</text>
+  <text x="24" y="322" font-weight="600" class="ink">Contracts and idempotency</text>
+  <text x="24" y="338" font-size="11.5" class="quiet">Schema and Pact tests, duplicate events</text>
+  <text x="24" y="374" font-weight="600" class="ink">Live status and cancel</text>
+  <text x="24" y="390" font-size="11.5" class="quiet">SignalR status, customer cancel, E2E hardening</text>
+  <text x="24" y="426" font-weight="600" class="ink">Hardening and retro</text>
+  <text x="24" y="442" font-size="11.5" class="quiet">CI gates, 20 green runs, retrospective</text>
+</svg>
+<figcaption>Milestones · 8 weeks at about 6 to 8 hours a week</figcaption>
+</figure>
+<p>Week 1 builds a walking skeleton on the in-memory bus so the whole loop exists before any real feature; real RabbitMQ and PostgreSQL arrive only in week 5, once the specs and tests have proven their worth. Each week ends with a 15-minute review: which spec was unclear, and which test caught a real bug.</p>
+
+<h2 id="success-criteria-risks-and-stretch-goals">Success criteria, risks and stretch goals</h2>
+<p><strong>Done means</strong></p>
+<ul class="checklist">
+<li>All 6 feature specs written, clarified and marked Done, each with a linked PR.</li>
+<li>Every acceptance scenario is automated at some layer; a coverage table in each <code>plan.md</code> says which.</li>
+<li>Breaking an event field fails the contract tests before anything is deployed.</li>
+<li>Full suite runs locally with <code>docker compose up</code> plus one test command, under 10 minutes.</li>
+<li>E2E suite passes 20 consecutive CI runs with no retries.</li>
+<li>A short retrospective: what SDD changed in how you work, and what you would drop.</li>
+</ul>
+<p><strong>Risks</strong></p>
+<div class="table-wrap"><table>
+<thead><tr><th>Risk</th><th>Likelihood</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>Specs drift from code after week 4</td><td>High</td><td>CI fails if a PR touches <code>src/</code> with no change under <code>specs/</code> or <code>contracts/</code> (override label allowed)</td></tr>
+<tr><td>Flaky E2E tests from async timing</td><td>High</td><td>Correlation IDs, polling helpers, event spy; quarantine a flaky test the same day</td></tr>
+<tr><td>Too much infrastructure, too little learning</td><td>Medium</td><td>Start with the in-memory bus; add RabbitMQ only in milestone 3</td></tr>
+<tr><td>Scope creep in the domain</td><td>Medium</td><td>Non-goals section is mandatory in every spec</td></tr>
+<tr><td>Library licensing changes (e.g. MassTransit v9 is commercial)</td><td>Low</td><td>Pin MassTransit v8, or use the raw RabbitMQ client behind your own interface</td></tr>
+</tbody></table></div>
+<p><strong>Stretch goals</strong></p>
+<ul>
+<li>Swap RabbitMQ for Azure Service Bus or Kafka and prove the specs and tests did not change.</li>
+<li>Generate an event catalog site from AsyncAPI (EventCatalog).</li>
+<li>Add OpenTelemetry tracing and assert on traces in an E2E test.</li>
+<li>Mutation testing with Stryker.NET to check that tests actually test the spec.</li>
+<li>Consumer-driven contracts for events with Pact message pacts.</li>
+</ul>
+</main>
+</body>
+</html>
