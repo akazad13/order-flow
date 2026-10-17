@@ -12,12 +12,12 @@ concurrency:
 jobs:
   contracts:
     name: Lint contracts, check specs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # the contract gate compares with earlier revisions (spec 014)
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -38,14 +38,14 @@ jobs:
 
   dotnet:
     name: .NET unit, component, contract and Pact provider tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
       - run: dotnet test OrderFlow.slnx --filter "Category!=Integration" --logger "trx" --results-directory test-results
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: dotnet-test-results
@@ -53,10 +53,10 @@ jobs:
 
   integration:
     name: Integration tests (Testcontainers) and migrations
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
       - run: dotnet tool restore
@@ -68,7 +68,7 @@ jobs:
       - run: dotnet ef migrations has-pending-model-changes -p src/OrderFlow.Notification -s src/OrderFlow.Notification
       - run: dotnet ef migrations has-pending-model-changes -p src/OrderFlow.Gateway -s src/OrderFlow.Gateway
       - run: dotnet test OrderFlow.slnx --filter "Category=Integration" --logger "trx" --results-directory test-results
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: integration-test-results
@@ -76,13 +76,13 @@ jobs:
 
   web:
     name: Web build and tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -99,7 +99,7 @@ jobs:
   e2e:
     name: End-to-end (docker compose + Playwright)
     needs: [contracts, dotnet, integration, web]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Spec 013: two copies of every service; every docker compose command below uses both files.
     env:
       COMPOSE_FILE: docker-compose.yml:docker-compose.copies.yml
@@ -107,8 +107,8 @@ jobs:
       run:
         working-directory: e2e
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -125,7 +125,7 @@ jobs:
         if: ${{ !cancelled() }}
         run: docker compose exec -T rabbitmq rabbitmqctl list_queues name messages --formatter json | node e2e/scripts/check-error-queues.mjs -
         working-directory: .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: failure()
         with:
           name: playwright-report
@@ -142,7 +142,7 @@ jobs:
   prod-profile:
     name: Production profile (Keycloak over HTTPS) smoke test
     needs: [contracts, dotnet, integration, web]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Spec 019, AC-8. Certificates and secrets are made here, for this run only (R-2).
     env:
       COMPOSE_PROJECT_NAME: orderflow-prod
@@ -152,8 +152,8 @@ jobs:
       run:
         working-directory: e2e
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm

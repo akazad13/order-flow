@@ -10,7 +10,7 @@ on:
 jobs:
   e2e-repeated:
     name: E2E x10 (docker compose + Playwright)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     # Spec 013: two copies of every service; every docker compose command below uses both files.
     env:
@@ -19,8 +19,8 @@ jobs:
       run:
         working-directory: e2e
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -33,8 +33,9 @@ jobs:
       - run: npx bddgen && npx playwright test --repeat-each=10
       - name: No faulted or skipped messages
         if: ${{ !cancelled() }}
-        run: docker compose exec -T rabbitmq rabbitmqctl list_queues name messages --formatter json | node scripts/check-error-queues.mjs -
-      - uses: actions/upload-artifact@v4
+        run: docker compose exec -T rabbitmq rabbitmqctl list_queues name messages --formatter json | node e2e/scripts/check-error-queues.mjs -
+        working-directory: .
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: nightly-playwright-report
@@ -50,14 +51,14 @@ jobs:
 
   integration:
     name: Integration tests (Testcontainers)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
       - run: dotnet test OrderFlow.slnx --filter "Category=Integration" --logger "trx" --results-directory test-results
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: nightly-integration-results
