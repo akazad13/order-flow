@@ -35,7 +35,7 @@ jobs:
         if: ${{ !cancelled() }}
         run: docker compose exec -T rabbitmq rabbitmqctl list_queues name messages --formatter json | node e2e/scripts/check-error-queues.mjs -
         working-directory: .
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: nightly-playwright-report
@@ -58,7 +58,7 @@ jobs:
         with:
           global-json-file: global.json
       - run: dotnet test OrderFlow.slnx --filter "Category=Integration" --logger "trx" --results-directory test-results
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: nightly-integration-results
