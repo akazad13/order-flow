@@ -1,158 +1,185 @@
-# OrderFlow
+<div align="center">
 
-A small event-driven order platform built to practice **spec-driven development**: every feature starts as a spec, every acceptance criterion ends as an automated test.
+# 📦 OrderFlow
 
-## Layout
+### Event-driven order processing platform built with .NET 10 microservices, RabbitMQ, PostgreSQL, Keycloak, and Spec-Driven Development (SDD)
 
-| Path | What lives there |
-| --- | --- |
-| `.specify/` | Constitution (the rules) and spec/plan/tasks templates |
-| `specs/NNN-name/` | One folder per feature: `spec.md`, `plan.md`, `tasks.md` |
-| `contracts/` | OpenAPI (HTTP), AsyncAPI + JSON Schema (events), AsyncAPI for the live-updates hub (`realtime/`) |
-| `pacts/` | Consumer-driven contract: what the web UI relies on from the Order API (Pact, ADR 0006) |
-| `features/` | Gherkin: `component/` (Reqnroll) and `e2e/` (playwright-bdd) |
-| `docs/adr/` | Architecture decisions |
-| `docs/retro.md` | What eight weeks of SDD taught: which layer caught which bug, what is still open |
-| `scripts/` | Spec gate (`check-specs.mjs`) and its tests |
-| `src/` | .NET 10 services: Order, Inventory, Payment, Notification |
-| `tests/` | Unit, component, contract and integration tests (.NET); `Shared/` holds helpers linked into each component test project |
-| `web/` | React + TypeScript UI (types generated from OpenAPI) |
-| `e2e/` | Playwright end-to-end tests |
+[![CI Status](https://img.shields.io/github/actions/workflow/status/akazad13/order-flow/ci.yml?branch=main&style=flat-square&logo=githubactions&logoColor=white)](https://github.com/akazad13/order-flow/actions)
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
+[![React](https://img.shields.io/badge/React-19.0-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![RabbitMQ](https://img.shields.io/badge/RabbitMQ-AMQP-FF6600?style=flat-square&logo=rabbitmq&logoColor=white)](https://www.rabbitmq.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Keycloak](https://img.shields.io/badge/Auth-Keycloak-4D4D4D?style=flat-square&logo=keycloak&logoColor=white)](https://www.keycloak.org/)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
-## Prerequisites
+[Overview](#-overview) •
+[Architecture](#-architecture) •
+[Tech Stack](#-tech-stack) •
+[Repository Layout](#-repository-layout) •
+[Quick Start](#-quick-start) •
+[Testing](#-testing) •
+[Spec-Driven Development](#-spec-driven-development-workflow)
 
-.NET SDK 10, Node 22, Docker. Run `dotnet tool restore` once for `dotnet ef`.
+</div>
 
-## Run the tests
+---
 
-.NET unit, component and contract tests (fast, no Docker needed):
+## 📌 Overview
 
-```bash
-dotnet test OrderFlow.slnx --filter "Category!=Integration"
+**OrderFlow** is an event-driven order processing platform built to practice and demonstrate **Spec-Driven Development (SDD)**: every feature begins with a formal specification, contracts and Gherkin scenarios are defined and linted first, and every acceptance criterion maps to automated tests across unit, contract (Pact), integration (Testcontainers), and E2E (Playwright) layers.
+
+### Key Highlights
+- 🔄 **Asynchronous Event Collaboration**: Decoupled domain services communicate via RabbitMQ with durable messaging, error queues, and dead-letter handling.
+- 📜 **Consumer-Driven Contracts**: HTTP contracts between Web UI and Order API are enforced with Pact, alongside OpenAPI (Spectral) and AsyncAPI linting gates.
+- 🔐 **BFF Security Model**: Keycloak handles user identity; tokens are securely held at the Gateway BFF, presenting an HttpOnly session cookie to the browser.
+- 📐 **Rigorous Quality Gates**: Contract-gate scripts (`check-contracts.mjs`) block breaking API changes, and spec gates (`check-specs.mjs`) verify that specs, plans, and tests stay aligned.
+
+---
+
+## 🏛 Architecture
+
+```mermaid
+flowchart TD
+    subgraph Client["Client Tier"]
+        UI["Web UI<br/>(React 19 + TypeScript)"]
+    end
+
+    subgraph Entry["Edge / Gateway"]
+        GW["OrderFlow.Gateway<br/>(BFF, Keycloak OIDC, Sessions)"]
+    end
+
+    subgraph Services["Core Microservices (.NET 10)"]
+        ORD["Order Service"]
+        INV["Inventory Service"]
+        PAY["Payment Service"]
+        NOT["Notification Service"]
+    end
+
+    subgraph Infra["Infrastructure"]
+        MQ[("RabbitMQ<br/>Event Bus")]
+        PG[("PostgreSQL 17<br/>Per-service DBs")]
+        KC["Keycloak<br/>Identity Provider"]
+    end
+
+    UI -->|cookie / sessions| GW
+    GW -->|reverse proxy| ORD
+    GW -->|reverse proxy| INV
+    GW --> KC
+
+    ORD --> MQ
+    INV --> MQ
+    PAY --> MQ
+    NOT --> MQ
+
+    ORD --> PG
+    INV --> PG
+    PAY --> PG
+    NOT --> PG
 ```
 
-Integration tests against real PostgreSQL and RabbitMQ (Testcontainers starts them; needs Docker):
+> [!NOTE]
+> Each service owns its dedicated database schema (`orders`, `inventory`, `payments`, `notifications`), maintaining strict domain boundaries.
 
-```bash
-dotnet test OrderFlow.slnx --filter "Category=Integration"
+---
+
+## 🛠 Tech Stack
+
+| Domain | Technologies |
+| :--- | :--- |
+| **Backend Services** | .NET 10, ASP.NET Core, C# 14 (Order, Inventory, Payment, Notification, Gateway) |
+| **Frontend** | React 19, TypeScript, OpenAPI-generated API clients |
+| **Messaging & Broker** | RabbitMQ (AMQP), MassTransit / custom handlers |
+| **Persistence** | PostgreSQL 17, Entity Framework Core 10, in-memory test providers |
+| **Identity & Access** | Keycloak, OpenID Connect, OAuth 2.0, HttpOnly cookie sessions |
+| **Quality & Contracts** | Pact, Spectral (OpenAPI lint), AsyncAPI CLI, Reqnroll (Gherkin), Testcontainers, Playwright |
+
+---
+
+## 📂 Repository Layout
+
+```text
+├── .specify/             # Project rules, spec/plan/task templates
+├── specs/                # Feature folders (000-walking-skeleton/, spec.md, plan.md, tasks.md)
+├── contracts/            # OpenAPI (HTTP), AsyncAPI + JSON Schema (events), Realtime hub
+├── pacts/                # Consumer-driven contract definitions (Pact)
+├── features/             # Gherkin feature files: component/ (Reqnroll) and e2e/ (playwright-bdd)
+├── docs/                 # Architecture decision records (docs/adr/) and SDD retrospective
+├── scripts/              # Automated spec gate and contract verification scripts
+├── src/                  # .NET 10 services (Order, Inventory, Payment, Notification, Gateway)
+├── tests/                # Unit, component, contract, and integration test suites
+├── web/                  # React + TypeScript frontend application
+└── e2e/                  # Playwright end-to-end browser test suites
 ```
 
-UI tests, including the Pact consumer tests that rewrite `pacts/` (commit the change):
+---
 
-```bash
-npm --prefix web ci && npm --prefix web test
-```
+## 🚀 Quick Start
 
-The Order API verifies `pacts/` in `tests/OrderFlow.Order.PactTests`, part of the fast .NET run above.
+### Prerequisites
+- [.NET 10 SDK](https://dotnet.microsoft.com/)
+- [Node.js 22+](https://nodejs.org/)
+- [Docker Desktop](https://www.docker.com/)
 
-Contract lint (OpenAPI with Spectral, AsyncAPI with the AsyncAPI CLI):
-
-```bash
-npm ci && npm run lint:contracts
-```
-
-Spec gate: specs, plans, feature files and tests agree, and no banned package is used (spec 009):
-
-```bash
-npm run check:specs
-```
-
-Contract gate: no contract change without a new version, and no breaking change without a new major version (spec 014, ADR 0009; needs Docker for oasdiff). It compares the working tree with the last commit; CI compares a pull request with its base branch:
-
-```bash
-npm run check:contracts
-```
-
-```bash
-npm run check:contracts -- --base origin/main
-```
-
-The gate scripts' own tests:
-
-```bash
-npm run test:scripts
-```
-
-End-to-end, against the full stack:
-
+### 1. Run the Development Stack
 ```bash
 docker compose up -d --build --force-recreate
 ```
 
+### 2. Service Endpoints
+| Service | URL | Credentials / Notes |
+| :--- | :--- | :--- |
+| **Web UI** | `http://localhost:5180` | `alice` / `alice` (Customer), `sam` / `sam` (Staff), `ada` / `ada` (Admin) |
+| **Keycloak Admin** | `http://localhost:8180` | `admin` / `admin` (Realm: `orderflow`) |
+| **Gateway BFF** | `http://localhost:5105` | Entry point for browser API requests |
+| **Order API** | `http://localhost:5101` | Core order operations |
+| **Inventory API** | `http://localhost:5102` | Stock queries and admin updates |
+| **Payment API** | `http://localhost:5103` | Payment processing |
+| **Notification API** | `http://localhost:5104` | Simulated notifications inbox |
+| **RabbitMQ Management** | `http://localhost:15672` | `guest` / `guest` |
+| **PostgreSQL** | `localhost:5432` | `orderflow` / `orderflow` |
+
+### 3. Local Frontend Development
 ```bash
-cd e2e && npm ci && npx playwright install chromium && npm run wait && npm test
+npm --prefix web run dev
 ```
+Runs the Vite dev server at `http://localhost:5173`, proxying `/bff` and APIs to the Gateway at port 5105.
 
-CI runs E2E with two copies of every service (spec 013). To do the same locally, start the stack with both compose files, and wait for the second copies too:
+---
 
-```bash
-docker compose -f docker-compose.yml -f docker-compose.copies.yml up -d --build --force-recreate
-```
+## 🧪 Testing
 
-```bash
-cd e2e && npm run wait:copies && npm test
-```
+| Test Suite | Purpose | Command |
+| :--- | :--- | :--- |
+| **Unit & Component Tests** | Fast .NET unit tests without Docker | `dotnet test OrderFlow.slnx --filter "Category!=Integration"` |
+| **Integration Tests** | Real PostgreSQL & RabbitMQ via Testcontainers | `dotnet test OrderFlow.slnx --filter "Category=Integration"` |
+| **Pact Contract Tests** | Consumer contract verification | `npm --prefix web test` |
+| **Contract Linting** | Spectral (OpenAPI) & AsyncAPI verification | `npm run lint:contracts` |
+| **Spec Gate** | Verify specs, plans, features, and forbidden dependencies | `npm run check:specs` |
+| **Breaking Change Gate** | Detect unversioned breaking contract changes (`oasdiff`) | `npm run check:contracts` |
+| **End-to-End Tests** | Playwright browser tests against the full running stack | `cd e2e && npm test` |
 
-Then check that no message faulted quietly (CI does this after every E2E run):
+---
 
-```bash
-docker compose exec -T rabbitmq rabbitmqctl list_queues name messages --formatter json | node e2e/scripts/check-error-queues.mjs -
-```
+## 📐 Spec-Driven Development Workflow
 
-A nightly workflow (`.github/workflows/nightly.yml`) repeats E2E ten times and runs the integration tests.
+1. **Write Spec**: Copy templates from `.specify/templates/` into `specs/NNN-name/` and author `spec.md`.
+2. **Draft Plan**: Author `plan.md` defining the criterion-to-test-layer mapping table.
+3. **Contracts & Scenarios First**: Update `contracts/` and Gherkin feature files, lint them, and observe failures.
+4. **Implement Test-First**: Complete tasks in `tasks.md`, naming each test according to the plan table.
+5. **Generate API Client**: Run `npm --prefix web run gen:api` to regenerate TypeScript types from OpenAPI schemas.
+6. **Pass Spec Gate**: Run `npm run check:specs` before marking the feature as Done.
 
-## Run the stack
+---
 
-`docker compose up -d --build --force-recreate` starts RabbitMQ and every service. Keep `--force-recreate`: without it Docker Desktop sometimes keeps old containers running after a rebuild.
+## 👤 Author
 
-| Service | URL |
-| --- | --- |
-| Web UI | http://localhost:5180 (log in as `alice` / `alice`, a demo customer, `sam` / `sam`, a demo member of staff who can look up and cancel any order (spec 015), or `ada` / `ada`, a demo admin who manages stock (spec 017)) |
-| Keycloak (logins, spec 012) | http://localhost:8180 (admin console: admin / admin; realm `orderflow`) |
-| Order API | http://localhost:5101 |
-| Inventory (`GET /stock`; `PUT /stock/{sku}` for admins, spec 017) | http://localhost:5102 |
-| Payment | http://localhost:5103 |
-| Notification (fake inbox) | http://localhost:5104 |
-| Gateway (logins and the page's API calls, spec 023) | http://localhost:5105 |
-| Second copies, with `docker-compose.copies.yml` (spec 013) | http://localhost:5111 to 5114 (Order, Inventory, Payment, Notification) |
-| RabbitMQ management | http://localhost:15672 (guest / guest) |
-| PostgreSQL | localhost:5432 (orderflow / orderflow; databases `orders`, `inventory`, `payments`, `notifications`) |
+**Md. Abul Kalam**
+- GitHub: [@akazad13](https://github.com/akazad13)
+- LinkedIn: [Md. Abul Kalam](https://linkedin.com/in/akazad13)
 
-Every service stores its state in PostgreSQL under compose (`Persistence__Provider=Postgres`) and in memory otherwise (ADR 0005, specs 007, 010, 011). After changing an EF model, add a migration:
+---
 
-```bash
-dotnet ef migrations add <Name> -p src/OrderFlow.Order -s src/OrderFlow.Order -o Persistence/Migrations
-```
+## 📄 License
 
-For UI work, run `npm --prefix web run dev` (http://localhost:5173); it proxies `/bff` and the APIs to the gateway on 5105 (running in compose, or `dotnet run --project src/OrderFlow.Gateway`).
-
-Customers log in through Keycloak (spec 012, ADR 0008), by way of the gateway, which keeps their tokens on the server; the page holds only an HttpOnly session cookie (spec 023, ADR 0012); expired sessions are removed every hour (spec 024). The production realm (roles, the gateway's client; no users, no literal secrets) is `deploy/keycloak/orderflow-realm.json`; development adds demo users, the E2E client and local addresses from `deploy/keycloak/dev-overlay.json`, merged into `deploy/keycloak/dev/orderflow-realm.json` by `npm run build:realm` (CI checks it with `npm run check:realm`; spec 019, ADR 0011). The Order and Notification APIs and the live-updates hub need a login; tests below E2E use tokens signed by a test-only key (`tests/Shared/TestTokens.cs`), and each E2E scenario creates its own Keycloak user.
-
-## Run the production profile
-
-A production-ready Keycloak, run locally (spec 019, ADR 0011): its optimized build on its own PostgreSQL, HTTPS only, secrets from `deploy/prod/.env` (git-ignored), the production realm with no demo users or test client, services that fetch Keycloak's keys over HTTPS only. It uses the same ports as the development stack, so stop that first. Make a local certificate authority and certificate, and random secrets (neither is committed):
-
-```bash
-bash deploy/prod/make-certs.sh && node deploy/prod/make-env.mjs
-```
-
-```bash
-docker compose -p orderflow-prod -f docker-compose.yml -f deploy/prod/docker-compose.prod.yml --env-file deploy/prod/.env up -d --build --wait
-```
-
-Only the shop (https://localhost:5443) and Keycloak (https://localhost:8443) are reachable from outside; the services, PostgreSQL and RabbitMQ only from inside, e.g. with `docker compose exec` (spec 021). The browser warns about the local certificate unless you trust `deploy/prod/certs/ca.crt`. There are no users: create one in Keycloak's admin console with the administrator from `deploy/prod/.env`. The smoke test CI runs:
-
-```bash
-cd e2e && node scripts/wait-for-stack.mjs --prod && npm run test:prod
-```
-
-## Working on a feature
-
-1. Copy the templates from `.specify/templates/` into `specs/NNN-name/` and write `spec.md`. Resolve open questions.
-2. Write `plan.md`, including the criterion-to-test-layer table.
-3. Change the contracts and the Gherkin first; lint; watch the scenarios fail.
-4. Work through `tasks.md`, test first. Name each test exactly in the plan's test table.
-5. After changing `contracts/http`, run `npm --prefix web run gen:api` (CI fails if the types are stale).
-6. Before marking the spec Done, run `npm run check:specs`.
-
-See `specs/000-walking-skeleton/` for a complete example.
+This project is licensed under the [MIT License](LICENSE).
