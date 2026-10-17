@@ -123,7 +123,8 @@ jobs:
       # rabbitmqctl gives live counts; the management API's lag by about 5 seconds.
       - name: No faulted or skipped messages
         if: ${{ !cancelled() }}
-        run: docker compose exec -T rabbitmq rabbitmqctl list_queues name messages --formatter json | node scripts/check-error-queues.mjs -
+        run: docker compose exec -T rabbitmq rabbitmqctl list_queues name messages --formatter json | node e2e/scripts/check-error-queues.mjs -
+        working-directory: .
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
