@@ -60,6 +60,7 @@ jobs:
         with:
           global-json-file: global.json
       - run: dotnet tool restore
+      - run: dotnet restore OrderFlow.slnx
       # Fails if an EF model changed without a migration (ADR 0005).
       - run: dotnet ef migrations has-pending-model-changes -p src/OrderFlow.Order -s src/OrderFlow.Order
       - run: dotnet ef migrations has-pending-model-changes -p src/OrderFlow.Inventory -s src/OrderFlow.Inventory
