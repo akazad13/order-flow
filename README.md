@@ -172,6 +172,12 @@ Runs the Vite dev server at `http://localhost:5173`, proxying `/bff` and APIs to
 
 ---
 
+## 🤖 AI-Driven Development & Contributing
+
+Autonomous coding agents (Antigravity, Cursor, Claude Code, GitHub Copilot) operating in this repository must consult [AGENTS.md](AGENTS.md) and [.specify/constitution.md](.specify/constitution.md) for mandatory Spec-Driven Development rules, contract change policies, and verification gates.
+
+---
+
 ## 👤 Author
 
 **Md. Abul Kalam**
