@@ -36,21 +36,30 @@ This document provides mandatory guidance for autonomous AI coding agents (Antig
    - Follow workspace policy: Do not introduce `Moq` or `AutoMapper`.
 5. **MassTransit Version Pinning (ADR-0002 / ADR-0013)**:
    - MassTransit packages in `Directory.Packages.props` MUST remain pinned to v8 (`8.5.11`). Do NOT upgrade to v9+ due to commercial licensing restrictions and breaking saga changes.
+6. **Constraint-Driven Quality Floor (`CONSTRAINTS.md`)**:
+   - Read `CONSTRAINTS.md` before writing code. Do not weaken it to make a change pass.
+   - Never introduce `@ts-ignore`, `@ts-nocheck`, `#pragma warning disable` (outside migrations), `[Fact(Skip)]`, `test.skip()`, or `NotImplementedException` stubs.
 
 ---
 
 ## 3. Commands Cheat Sheet
 
 ```bash
+# Fast agent checks (<10s: constraints, contracts, specs)
+npm run check:fast
+
+# Task completion checks (<60s: check:fast + unit/component + web tests)
+npm run check:task
+
 # Build .NET solution
 dotnet build OrderFlow.slnx
 
 # Run all tests (unit & integration)
 dotnet test OrderFlow.slnx
 
-# Run contract and spec verification gates
+# Run contract, spec, and constraint verification gates
+npm run check:fast
 node scripts/check-contracts.mjs
-node scripts/check-specs.mjs
 
 # Start local infrastructure (Postgres, RabbitMQ, Keycloak, Redis)
 docker compose up -d
@@ -64,6 +73,7 @@ cd web && npm install && npm run dev
 ## 4. Verification Gates for AI Agents
 
 Before submitting code changes or finishing a turn:
-1. Run `dotnet build OrderFlow.slnx` — must succeed with **0 errors**.
-2. Run `dotnet test OrderFlow.slnx` — all unit tests must pass.
-3. Run `node scripts/check-contracts.mjs` — all contract and linting gates must pass.
+1. Run `npm run check:fast` — all floor constraints, contract lints, and spec alignments must pass.
+2. Run `dotnet build OrderFlow.slnx` — must succeed with **0 errors**.
+3. Run `dotnet test OrderFlow.slnx` — all unit tests must pass.
+4. Run `node scripts/check-contracts.mjs` — all contract and linting gates must pass.

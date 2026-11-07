@@ -158,9 +158,46 @@ flowchart TD
    - Reserve **E2E scenarios** for multi-service customer journeys and concurrency stress checks.
 3. **Verify Locally Before Commit**:
    ```bash
+   npm run check:fast
    dotnet build OrderFlow.slnx
    dotnet test OrderFlow.slnx --filter "Category!=Integration"
-   node scripts/check-specs.mjs
    node scripts/check-contracts.mjs
    cd web && npm test && npm run build
    ```
+
+---
+
+## 5. Agentic Testing Paradigm & Constraint-Driven Development
+
+Autonomous AI coding agents generate substantial code volume and can inadvertently dilute quality bars by over-mocking, skipping tests, or asserting on internal implementation details. OrderFlow applies the following agentic testing patterns:
+
+### The Red-Green-Refactor Loop (TDD)
+- **RED**: Write the test first and execute it to confirm it fails for the expected reason. A test that passes before code is written is invalid.
+- **GREEN**: Author minimal production code to satisfy the test.
+- **REFACTOR**: Clean up readability and domain abstractions with green tests guarding regressions.
+
+### The Prove-It Pattern for Bug Fixes
+When a defect is discovered:
+1. Do not immediately attempt to patch production code.
+2. Author an isolated unit or component test demonstrating the failure.
+3. Run the test and confirm it fails (**RED**).
+4. Implement the fix until the test succeeds (**GREEN**).
+5. Run the full suite to verify zero regressions.
+
+### State Over Interactions & DAMP Over DRY
+- **Assert on Outcomes, Not Method Calls**: Tests should assert state transitions and message payloads, rather than verifying internal method call counts. Interaction-heavy tests break during refactorings even when behavior is preserved.
+- **DAMP in Tests (Descriptive And Meaningful Phrases)**: Tests should read as clear specifications. Independent setup per test is preferred over excessive shared helper abstractions that obscure test intent.
+- **Real Over Mocks**: Use real domain models and in-memory harnesses before resorting to stubs. Only mock external boundaries that cannot run deterministically.
+
+### Mechanical Floor Enforcement (`CONSTRAINTS.md`)
+AI agents are barred from weakening tests to make changes pass. The automated constraint gate (`npm run check:constraints`) runs in `check:fast` and CI to verify:
+- Zero suppression comments (`@ts-ignore`, `@ts-nocheck`, `#pragma warning disable`).
+- Zero skipped tests (`[Fact(Skip)]`, `test.skip()`).
+- Zero unimplemented stubs (`NotImplementedException`).
+- Central Package Management compliance (MassTransit strictly pinned to v8).
+
+### Tiered Agent Lifecycle Commands
+- `npm run check:fast`: Under 10 seconds. Checks constraints, contract lints, and spec alignments.
+- `npm run check:task`: Under 60 seconds. Combines fast checks with .NET unit/component suites and web Vitest tests.
+- `npm run check:full`: Complete repository quality gate for pull requests and CI merges.
+

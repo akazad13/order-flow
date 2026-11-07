@@ -29,6 +29,8 @@ jobs:
         run: npm run check:contracts -- --base "$BASE"
         env:
           BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
+      # CDD: Enforce quality floor (no suppressions, no skipped tests, no stubs).
+      - run: npm run check:constraints
       # Spec 009: specs, plans, features and tests agree; no banned packages (AC-1 to AC-5).
       - run: npm run check:specs
       # Spec 019: the production realm has no users, other clients or secrets; the dev realm is current.
