@@ -33,6 +33,8 @@ This document provides mandatory guidance for autonomous AI coding agents (Antig
    - All message consumers must be idempotent to handle network retries and duplicate message deliveries.
 4. **Banned Packages**:
    - Follow workspace policy: Do not introduce `Moq` or `AutoMapper`.
+5. **MassTransit Version Pinning (ADR-0002 / ADR-0013)**:
+   - MassTransit packages in `Directory.Packages.props` MUST remain pinned to v8 (`8.5.11`). Do NOT upgrade to v9+ due to commercial licensing restrictions and breaking saga changes.
 
 ---
 
