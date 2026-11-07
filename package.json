@@ -12,9 +12,9 @@
     "check:realm": "node scripts/build-dev-realm.mjs --check"
   },
   "devDependencies": {
-    "@asyncapi/cli": "^6.3.0",
-    "@asyncapi/parser": "^3.6.6",
-    "@stoplight/spectral-cli": "^6.17.1",
+    "@asyncapi/cli": "^4.1.1",
+    "@asyncapi/parser": "^3.6.4",
+    "@stoplight/spectral-cli": "^6.17.0",
     "yaml": "^2.9.1"
   }
 }
