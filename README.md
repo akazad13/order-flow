@@ -149,17 +149,34 @@ Runs the Vite dev server at `http://localhost:5173`, proxying `/bff` and APIs to
 
 ## 🧪 Testing
 
-OrderFlow implements a 5-layer testing pyramid enforced by Spec-Driven Development (SDD) and constitutional invariants (no fixed sleeps, zero unhandled errors/faulted queues, and lowest-layer verification). For detailed architectural guidance and design principles, see the [Testing Paradigm & Strategy Guide](docs/testing-paradigm.md).
+OrderFlow implements a resource-modeled testing pyramid enforced by Spec-Driven Development (SDD), [ADR-0014](docs/adr/0014-testing-paradigm-and-agentic-verification.md), and constitutional invariants (no fixed sleeps, zero unhandled errors/faulted queues, state over interactions, and lowest-layer verification). For detailed architectural guidance and design principles, see the [Testing Paradigm & Strategy Guide](docs/testing-paradigm.md).
+
+### The Testing Pyramid & Core Tenets
+
+```
+        ╱╲
+       ╱  ╲        ~5%  E2E & Consumer Contracts (Playwright, Pact, OpenAPI lint)
+      ╱──────╲
+     ╱        ╲    ~15% Integration (Testcontainers PostgreSQL 17 & RabbitMQ)
+    ╱────────────╲
+   ╱              ╲ ~80% Unit & Component (In-Memory MassTransit, FakeTimeProvider, 0 Docker)
+  ╱──────────────────╲
+```
+
+- **State Over Interactions**: Assert on state transitions, aggregate outcomes, and published outbox events rather than private method calls or invocation counts.
+- **DAMP Over DRY**: Tests prioritize Descriptive And Meaningful Phrases; each test tells an isolated, readable story.
+- **Zero Mocking of Core**: Use real domain logic and MassTransit in-memory test harnesses; `Moq` is strictly banned in favor of `NSubstitute`.
+- **Fast Feedback**: Developers and AI agents run focused unit/component suites in seconds without starting containers.
 
 | Test Suite | Purpose | Command |
 | :--- | :--- | :--- |
-| **Unit & Component Tests** | Fast .NET unit tests without Docker | `dotnet test OrderFlow.slnx --filter "Category!=Integration"` |
-| **Integration Tests** | Real PostgreSQL & RabbitMQ via Testcontainers | `dotnet test OrderFlow.slnx --filter "Category=Integration"` |
-| **Pact Contract Tests** | Consumer contract verification | `npm --prefix web test` |
+| **Unit & Component Tests** | Fast in-memory .NET tests without Docker (~80%) | `dotnet test OrderFlow.slnx --filter "FullyQualifiedName!~Integration"` |
+| **Integration Tests** | Real PostgreSQL & RabbitMQ via Testcontainers (~15%) | `dotnet test OrderFlow.slnx --filter "FullyQualifiedName~Integration"` |
+| **Pact Contract Tests** | Consumer contract verification (React → Order API) | `npm --prefix web test` |
 | **Contract Linting** | Spectral (OpenAPI) & AsyncAPI verification | `npm run lint:contracts` |
 | **Spec Gate** | Verify specs, plans, features, and forbidden dependencies | `npm run check:specs` |
 | **Breaking Change Gate** | Detect unversioned breaking contract changes (`oasdiff`) | `npm run check:contracts` |
-| **End-to-End Tests** | Playwright browser tests against the full running stack | `cd e2e && npm test` |
+| **End-to-End Tests** | Playwright browser tests against full Docker Compose stack (~5%) | `cd e2e && npm test` |
 
 ---
 

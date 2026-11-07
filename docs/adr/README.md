@@ -17,3 +17,4 @@ This directory documents the architectural decision records for **OrderFlow**. E
 | **[0011](0011-production-keycloak-profile.md)** | Production Keycloak profile | Accepted | 2026-10-14 | Deployment |
 | **[0012](0012-gateway-keeps-the-tokens.md)** | Gateway keeps the tokens | Accepted | 2026-10-14 | Security |
 | **[0013](0013-package-modernization-and-masstransit-pinning.md)** | Package Modernization and MassTransit Pinning | Accepted | 2026-11-07 | Dependencies |
+| **[0014](0014-testing-paradigm-and-agentic-verification.md)** | Testing Paradigm and Agentic Verification | Accepted | 2026-11-07 | Testing |
