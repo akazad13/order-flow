@@ -16,6 +16,7 @@ This document provides mandatory guidance for autonomous AI coding agents (Antig
 ### Project Layout:
 - `src/`: Microservices (`OrderFlow.OrderService`, `OrderFlow.PaymentService`, `OrderFlow.InventoryService`, `OrderFlow.Gateway`).
 - `contracts/`: Shared message contracts, OpenAPI specifications, and AsyncAPI event schemas.
+- `docs/`: Architecture decision records (`docs/adr/`), testing paradigm (`docs/testing-paradigm.md`), and retrospectives.
 - `specs/`: Formal specifications, Gherkin feature files, and architecture decision records.
 - `tests/`: Unit tests, Pact contract tests, Testcontainers integration tests, and Playwright E2E suites.
 - `web/`: React 19 single-page application.

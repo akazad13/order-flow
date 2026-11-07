@@ -7,7 +7,7 @@
 [![CI Status](https://img.shields.io/github/actions/workflow/status/akazad13/order-flow/ci.yml?branch=main&style=flat-square&logo=githubactions&logoColor=white)](https://github.com/akazad13/order-flow/actions)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![React](https://img.shields.io/badge/React-19.0-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![RabbitMQ](https://img.shields.io/badge/RabbitMQ-AMQP-FF6600?style=flat-square&logo=rabbitmq&logoColor=white)](https://www.rabbitmq.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Keycloak](https://img.shields.io/badge/Auth-Keycloak-4D4D4D?style=flat-square&logo=keycloak&logoColor=white)](https://www.keycloak.org/)
@@ -104,7 +104,7 @@ flowchart TD
 ├── contracts/            # OpenAPI (HTTP), AsyncAPI + JSON Schema (events), Realtime hub
 ├── pacts/                # Consumer-driven contract definitions (Pact)
 ├── features/             # Gherkin feature files: component/ (Reqnroll) and e2e/ (playwright-bdd)
-├── docs/                 # Architecture decision records (docs/adr/) and SDD retrospective
+├── docs/                 # Architecture decision records (docs/adr/), testing paradigm, and SDD retrospective
 ├── scripts/              # Automated spec gate and contract verification scripts
 ├── src/                  # .NET 10 services (Order, Inventory, Payment, Notification, Gateway)
 ├── tests/                # Unit, component, contract, and integration test suites
@@ -148,6 +148,8 @@ Runs the Vite dev server at `http://localhost:5173`, proxying `/bff` and APIs to
 ---
 
 ## 🧪 Testing
+
+OrderFlow implements a 5-layer testing pyramid enforced by Spec-Driven Development (SDD) and constitutional invariants (no fixed sleeps, zero unhandled errors/faulted queues, and lowest-layer verification). For detailed architectural guidance and design principles, see the [Testing Paradigm & Strategy Guide](docs/testing-paradigm.md).
 
 | Test Suite | Purpose | Command |
 | :--- | :--- | :--- |
